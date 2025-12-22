@@ -1,0 +1,81 @@
+import React from 'react';
+import { ShieldCheck, ChevronRight } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, Defs, LinearGradient, Stop } from 'recharts';
+
+interface InflationAnalysisCardProps {
+  onClick: () => void;
+}
+
+// Mock Data for Sparkline
+const data = [
+  { value: 0.4 }, { value: 0.6 }, { value: 0.3 }, { value: 0.8 }, { value: 0.5 }, { value: 0.9 }
+];
+
+export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ onClick }) => {
+  return (
+    <div 
+      onClick={onClick}
+      className="mx-4 p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in"
+    >
+      {/* Background Decor */}
+      <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
+      
+      {/* Standard Header Structure */}
+      <div className="flex justify-between items-start relative z-10 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-500 border border-emerald-100/50 dark:border-white/5 shadow-sm backdrop-blur-sm">
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <h3 className="text-gray-900 dark:text-white font-bold text-sm leading-none flex items-center gap-2">
+                Poder Real
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400 text-[10px] font-medium mt-1">
+               Proteção Patrimonial
+            </p>
+          </div>
+        </div>
+        
+        <div className="w-8 h-8 rounded-full bg-white/50 dark:bg-[#2c2c2e]/50 flex items-center justify-center text-gray-400 group-hover:text-emerald-500 transition-colors border border-white/40 dark:border-white/5 shadow-sm backdrop-blur-sm">
+          <ChevronRight size={16} />
+        </div>
+      </div>
+
+      {/* Body & Chart */}
+      <div className="flex items-end justify-between relative z-10">
+         <div>
+             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Ganho Real (12m)</p>
+             <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                 +4.52%
+                 <span className="text-[10px] bg-emerald-100/50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded-md self-center backdrop-blur-sm">
+                    PRO
+                 </span>
+             </h2>
+         </div>
+
+         {/* Sparkline Chart */}
+         <div className="h-10 w-24 relative mb-1">
+            <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                        <linearGradient id="colorReal" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity={0.4}/>
+                            <stop offset="100%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                    </defs>
+                    <Area 
+                        type="monotone" 
+                        dataKey="value" 
+                        stroke="#10b981" 
+                        strokeWidth={2} 
+                        fill="url(#colorReal)" 
+                        isAnimationActive={true}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+         </div>
+      </div>
+    </div>
+  );
+};
