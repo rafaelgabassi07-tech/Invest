@@ -46,7 +46,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
   const stats = useMemo(() => {
     const buy = filteredTransactions.filter(t => t.type === 'Compra').reduce((acc, t) => acc + t.total, 0);
     const sell = filteredTransactions.filter(t => t.type === 'Venda').reduce((acc, t) => acc + t.total, 0);
-    return { buy, sell, net: sell - buy };
+    // Alterado para Investimento Líquido (Aportes - Retiradas)
+    // Assim Compras geram saldo positivo visualmente para o investidor
+    return { buy, sell, net: buy - sell };
   }, [filteredTransactions]);
 
   const chartData = useMemo(() => {
@@ -100,7 +102,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                             <Wallet size={18} />
                         </div>
                         <div>
-                            <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest leading-none">Fluxo de Caixa</p>
+                            <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest leading-none">Investimento Líquido</p>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                                 R$ {stats.net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </h2>
