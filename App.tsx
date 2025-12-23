@@ -23,6 +23,7 @@ const IncomeReportModal = lazy(() => import('./components/IncomeReportModal').th
 const RealPowerModal = lazy(() => import('./components/RealPowerModal').then(m => ({ default: m.RealPowerModal })));
 const EvolutionModal = lazy(() => import('./components/EvolutionModal').then(m => ({ default: m.EvolutionModal })));
 const PortfolioModal = lazy(() => import('./components/PortfolioModal').then(m => ({ default: m.PortfolioModal })));
+const AddTransactionModal = lazy(() => import('./components/AddTransactionModal').then(m => ({ default: m.AddTransactionModal })));
 
 const INITIAL_ASSETS: Asset[] = [
   { id: '1', ticker: 'SNAG11', shortName: 'SNAG', companyName: 'Suno Asset', assetType: 'FIAGRO', segment: 'Crédito Agrícola', allocationType: 'CRAs', quantity: 25, currentPrice: 10.86, totalValue: 271.50, dailyChange: 0, averagePrice: 9.69, totalCost: 242.37, lastDividend: 0.13, lastDividendDate: '23/12/2025', dy12m: 12.73, color: '#ea580c', pvp: 1.05, vp: 10.34, liquidity: '4.5M', netWorth: '627.8M', vacancy: 0.0, cnpj: '30.345.123/0001-99', administrator: 'Suno Asset', assetsCount: 34 },
@@ -38,57 +39,56 @@ const App: React.FC = () => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [assets, setAssets] = useState<Asset[]>(INITIAL_ASSETS);
-  const [currentTheme, setCurrentTheme] = useState<AppTheme>(AVAILABLE_THEMES[0]);
+  const [assets, setAssets] = useState<Asset[]>(() => {
+    const saved = localStorage.getItem('invest_assets');
+    return saved ? JSON.parse(saved) : INITIAL_ASSETS;
+  });
+  const [currentTheme, setCurrentTheme] = useState<AppTheme>(() => {
+    const saved = localStorage.getItem('invest_theme');
+    return saved ? JSON.parse(saved) : AVAILABLE_THEMES[0];
+  });
+
+  // Persistência local
+  useEffect(() => {
+    localStorage.setItem('invest_assets', JSON.stringify(assets));
+    localStorage.setItem('invest_transactions', JSON.stringify(transactions));
+    localStorage.setItem('invest_theme', JSON.stringify(currentTheme));
+  }, [assets, transactions, currentTheme]);
 
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
-  /**
-   * Função para atualizar as cotações via BRAPI
-   * Chamada automaticamente no início e manualmente via Header
-   */
   const refreshMarketData = useCallback(async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    console.log("[App] Iniciando atualização de mercado...");
+    const tickers = assets.map(a => a.ticker);
+    const liveData = await fetchTickersData(tickers);
     
-    try {
-      const tickers = assets.map(a => a.ticker);
-      const liveData = await fetchTickersData(tickers);
-      
-      if (liveData && liveData.length > 0) {
-        setAssets(prev => prev.map(asset => {
-          const live = liveData.find((l: any) => l.symbol === asset.ticker);
-          if (live) {
-            return {
-              ...asset,
-              currentPrice: live.regularMarketPrice,
-              totalValue: live.regularMarketPrice * asset.quantity,
-              dailyChange: live.regularMarketChangePercent,
-              companyName: live.longName || asset.companyName
-            };
-          }
-          return asset;
-        }));
-        console.log("[App] Cotações atualizadas com sucesso.");
-      } else {
-        console.warn("[App] Nenhum dado novo recebido da API.");
-      }
-    } catch (err) {
-      console.error("[App] Erro ao atualizar dados:", err);
-    } finally {
-      setIsRefreshing(false);
+    if (liveData && liveData.length > 0) {
+      setAssets(prev => prev.map(asset => {
+        const live = liveData.find((l: any) => l.symbol === asset.ticker);
+        return live ? {
+          ...asset,
+          currentPrice: live.regularMarketPrice,
+          totalValue: live.regularMarketPrice * asset.quantity,
+          dailyChange: live.regularMarketChangePercent,
+          companyName: live.longName || asset.companyName
+        } : asset;
+      }));
     }
+    setIsRefreshing(false);
   }, [assets, isRefreshing]);
 
-  // Carregamento inicial de dados
+  const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
+    if (newData.assets) setAssets(newData.assets);
+    if (newData.transactions) setTransactions(newData.transactions);
+    // Forçar atualização de mercado após importação
+    setTimeout(() => refreshMarketData(), 500);
+  }, [refreshMarketData]);
+
   useEffect(() => {
-    if (!isAppLoading) {
-      refreshMarketData();
-    }
+    if (!isAppLoading) refreshMarketData();
   }, [isAppLoading]);
 
-  // Aplicação do Tema
   useEffect(() => {
     const root = document.documentElement;
     currentTheme.type === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
@@ -141,11 +141,11 @@ const App: React.FC = () => {
       <div className="w-full max-w-md relative flex flex-col h-screen bg-transparent z-10">
         <Header 
           title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
-          subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Dados em tempo real")}
+          subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
           showBackButton={['settings'].includes(activeTab)}
           onBackClick={() => setActiveTab(previousTab)}
           onSettingsClick={() => { setPreviousTab(activeTab); setActiveTab('settings'); }}
-          onRefreshClick={refreshMarketData} // Vinculação manual do ícone de atualização
+          onRefreshClick={refreshMarketData}
         />
         
         <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 overscroll-contain">
@@ -163,7 +163,16 @@ const App: React.FC = () => {
           )}
           {activeTab === 'wallet' && <WalletView assets={assets} onAssetClick={setSelectedAsset} />}
           {activeTab === 'transactions' && <TransactionsView transactions={transactions} />}
-          {activeTab === 'settings' && <SettingsView currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} availableThemes={AVAILABLE_THEMES} />}
+          {activeTab === 'settings' && (
+            <SettingsView 
+              currentTheme={currentTheme} 
+              setCurrentTheme={setCurrentTheme} 
+              availableThemes={AVAILABLE_THEMES}
+              assets={assets}
+              transactions={transactions}
+              onImport={handleImportData}
+            />
+          )}
         </main>
         
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />

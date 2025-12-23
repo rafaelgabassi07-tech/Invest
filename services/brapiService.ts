@@ -1,61 +1,67 @@
 
 /**
- * BRAPI Service for Brazilian Market Data (B3)
- * Documentação: https://brapi.dev/docs
+ * BRAPI Service for Brazilian Market Data
+ * Documentation: https://brapi.dev/docs
  */
 
+// Helper to safely get environment variables without crashing in browser
 const getSafeEnv = (key: string): string => {
   try {
     // @ts-ignore
-    return (process.env && process.env[key]) || '';
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+    }
+    return '';
   } catch {
     return '';
   }
 };
 
-// Tenta obter o token de diferentes possíveis nomes de variáveis no ambiente
-const BRAPI_TOKEN = getSafeEnv('BRAPI_TOKEN') || 
-                    getSafeEnv('VITE_BRAPI_TOKEN') || 
+const BRAPI_TOKEN = getSafeEnv('VITE_BRAPI_TOKEN') || 
+                    getSafeEnv('BRAPI_TOKEN_API') || 
+                    getSafeEnv('BRAPI_TOKEN') || 
                     ''; 
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
 
-/**
- * Busca cotações atuais de uma lista de tickers
- */
 export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length) return [];
   
   if (!BRAPI_TOKEN) {
-    console.warn("[BRAPI] Aviso: Token da API não configurado. Para dados reais, adicione BRAPI_TOKEN ao ambiente.");
+    console.warn("[BRAPI] Alerta: Token ausente. Dados reais não serão carregados. Configure BRAPI_TOKEN no Vercel.");
     return [];
   }
+  
+  console.log(`[BRAPI] Solicitando cotações: ${tickers.join(', ')}`);
   
   try {
     const list = tickers.join(',');
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${list}?token=${BRAPI_TOKEN}`);
     
-    if (!response.ok) {
-        if (response.status === 401) console.error("[BRAPI] Erro: Token inválido.");
+    if (response.status === 401) {
+        console.error("[BRAPI] Erro 401: Token inválido ou expirado. Verifique sua chave em brapi.dev.");
         return [];
     }
     
+    if (!response.ok) {
+        throw new Error(`BRAPI API Response Error: ${response.status}`);
+    }
+    
     const data = await response.json();
+    console.log("[BRAPI] Dados de mercado atualizados com sucesso.");
     return data.results || [];
   } catch (error) {
-    console.error("[BRAPI] Falha de rede ou API:", error);
+    console.error("[BRAPI] Falha crítica na busca de dados:", error);
     return [];
   }
 };
 
-/**
- * Busca dados históricos para os gráficos de detalhes
- */
 export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo') => {
   if (!BRAPI_TOKEN) return [];
 
   try {
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}`);
+    
     if (!response.ok) return [];
 
     const data = await response.json();
@@ -68,7 +74,7 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
     }
     return [];
   } catch (error) {
-    console.error(`[BRAPI] Erro histórico (${ticker}):`, error);
+    console.error(`[BRAPI] Erro no histórico (${ticker}):`, error);
     return [];
   }
 };

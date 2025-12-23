@@ -1,19 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   User, Shield, Settings, Bell, 
   Calculator, Book, LogOut, ChevronRight, ChevronLeft,
   Download, Search, Check, Smartphone, Store, Lock, EyeOff, Fingerprint,
   DollarSign, Mail, ShieldCheck, Laptop, Globe,
   Trash2, HelpCircle, AlertTriangle, FileJson, FileSpreadsheet,
-  Coins
+  Coins, Database, CloudDownload, CloudUpload, AlertCircle
 } from 'lucide-react';
-import { AppTheme } from '../types';
+import { AppTheme, Asset, Transaction } from '../types';
 
 interface SettingsViewProps {
   currentTheme: AppTheme;
   setCurrentTheme: (theme: AppTheme) => void;
   availableThemes: AppTheme[];
+  assets: Asset[];
+  transactions: Transaction[];
+  onImport: (data: { assets: Asset[], transactions: Transaction[] }) => void;
 }
 
 interface SettingsItemProps {
@@ -67,7 +70,7 @@ const ToggleSwitch: React.FC<{ checked: boolean; onChange: (val: boolean) => voi
     </button>
 );
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCurrentTheme, availableThemes }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCurrentTheme, availableThemes, assets, transactions, onImport }) => {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [themeFilter, setThemeFilter] = useState<'all' | 'dark' | 'light'>('all');
   const [calcInitial, setCalcInitial] = useState(1000);
@@ -82,6 +85,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
   const [notifyPush, setNotifyPush] = useState(true);
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredThemes = availableThemes.filter(t => themeFilter === 'all' ? true : t.type === themeFilter);
 
@@ -101,12 +106,60 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
     { term: 'Vacância Financeira', def: 'Perda de receita potencial devido a imóveis vagos.' },
   ];
 
-  const handleExportData = (type: 'csv' | 'json') => {
-      setIsExporting(true);
-      setTimeout(() => {
-          setIsExporting(false);
-          alert(`Relatório ${type.toUpperCase()} gerado.`);
-      }, 1000);
+  const handleExportBackup = () => {
+    setIsExporting(true);
+    const data = {
+        version: "2.4.0",
+        timestamp: new Date().toISOString(),
+        assets,
+        transactions
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `invest_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setTimeout(() => setIsExporting(false), 1000);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const json = JSON.parse(event.target?.result as string);
+            
+            // Validação simples de estrutura
+            if (!json.assets || !Array.isArray(json.assets)) {
+                throw new Error("Arquivo inválido: Lista de ativos não encontrada.");
+            }
+
+            if (window.confirm("Atenção: Importar dados substituirá sua carteira atual. Deseja continuar?")) {
+                onImport({
+                    assets: json.assets,
+                    transactions: json.transactions || []
+                });
+                alert("Dados importados com sucesso!");
+                setActiveSection(null);
+            }
+        } catch (err) {
+            alert("Erro ao importar arquivo: " + (err instanceof Error ? err.message : "Formato inválido"));
+        }
+    };
+    reader.readAsText(file);
+    // Limpar input para permitir importar o mesmo arquivo se necessário
+    e.target.value = '';
   };
 
   const renderContent = () => {
@@ -147,6 +200,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                             <span className="text-sm font-bold">Ocultar Valores</span>
                             <ToggleSwitch checked={hideValues} onChange={setHideValues} />
                         </div>
+                    </div>
+                </div>
+            </div>
+        );
+      case 'backup':
+        return (
+            <div className="animate-slide-up pb-10">
+                <SubPageHeader title="Backup & Dados" onBack={() => setActiveSection(null)} />
+                <div className="px-4 mt-6 space-y-6">
+                    <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl flex gap-3">
+                        <AlertCircle className="text-amber-500 shrink-0" size={18} />
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
+                            Seus dados são armazenados apenas localmente neste dispositivo. Recomendamos exportar um backup regularmente para evitar perda de dados.
+                        </p>
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 shadow-lg">
+                        <SettingsItem 
+                            icon={CloudDownload} 
+                            title="Exportar Backup" 
+                            subtitle="Salvar dados em arquivo JSON" 
+                            onClick={handleExportBackup} 
+                            rightElement={isExporting ? <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"/> : null}
+                        />
+                        <SettingsItem 
+                            icon={CloudUpload} 
+                            title="Importar Backup" 
+                            subtitle="Restaurar de um arquivo JSON" 
+                            onClick={handleImportClick} 
+                        />
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange} 
+                            accept=".json" 
+                            className="hidden" 
+                        />
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 shadow-lg">
+                        <SettingsItem 
+                            icon={Trash2} 
+                            title="Limpar Tudo" 
+                            subtitle="Apagar todos os dados do app" 
+                            onClick={() => {
+                                if(window.confirm("TEM CERTEZA? Isso apagará todos os seus investimentos permanentemente.")) {
+                                    localStorage.clear();
+                                    window.location.reload();
+                                }
+                            }} 
+                            destructive 
+                            hasBorder={false}
+                        />
                     </div>
                 </div>
             </div>
@@ -220,12 +326,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-8 shadow-lg">
         <SettingsItem icon={User} title="Meu Perfil" subtitle="Investidor Pro" onClick={() => setActiveSection('profile')} />
         <SettingsItem icon={Shield} title="Segurança" subtitle="Proteção e Privacidade" onClick={() => setActiveSection('security')} />
+        <SettingsItem icon={Database} title="Backup & Dados" subtitle="Importar e Exportar" onClick={() => setActiveSection('backup')} hasBorder={false} />
       </div>
 
       <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2 ml-1">Experiência</h3>
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-8 shadow-lg">
         <SettingsItem icon={Store} title="Loja de Temas" subtitle={`Ativo: ${currentTheme.name}`} onClick={() => setActiveSection('theme_store')} />
-        <SettingsItem icon={Calculator} title="Calculadoras" subtitle="Simular Juros Compostos" onClick={() => setActiveSection('calculators')} />
+        <SettingsItem icon={Calculator} title="Calculadoras" subtitle="Simular Juros Compostos" onClick={() => setActiveSection('calculators')} hasBorder={false} />
       </div>
 
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-10 shadow-lg">
@@ -233,7 +340,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
         <SettingsItem icon={HelpCircle} title="Sobre" subtitle="Versão 2.4.0" onClick={() => setActiveSection('about')} hasBorder={false} />
       </div>
 
-      <button className="w-full py-4 flex items-center justify-center gap-2 text-rose-500 opacity-80 hover:opacity-100 transition-all">
+      <button 
+        onClick={() => {
+            if(window.confirm("Deseja sair da conta? Os dados salvos localmente permanecerão neste dispositivo.")) {
+                window.location.reload();
+            }
+        }}
+        className="w-full py-4 flex items-center justify-center gap-2 text-rose-500 opacity-80 hover:opacity-100 transition-all"
+      >
         <LogOut size={18} />
         <span className="text-sm font-bold uppercase tracking-wider">Sair da Conta</span>
       </button>
