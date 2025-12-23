@@ -44,7 +44,7 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ as
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
+    <div className="fixed inset-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
       <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
         
         {/* Header */}

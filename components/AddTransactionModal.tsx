@@ -105,7 +105,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
+    <div className="fixed inset-0 md:left-72 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose} />
       
       <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-md max-h-[90vh] sm:h-auto sm:rounded-[2rem] rounded-t-[2rem] flex flex-col relative z-10 shadow-2xl animate-slide-up overflow-hidden border border-gray-200 dark:border-white/5">
