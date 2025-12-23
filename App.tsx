@@ -1,31 +1,30 @@
 
 import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback, useRef } from 'react';
-import { Header } from './components/Header.tsx';
-import { SummaryCard } from './components/SummaryCard.tsx';
-import { PortfolioChart } from './components/PortfolioChart.tsx';
-import { BottomNav } from './components/BottomNav.tsx';
-import { WalletView } from './components/WalletView.tsx';
-import { SplashScreen } from './components/SplashScreen.tsx';
-import { InflationAnalysisCard } from './components/InflationAnalysisCard.tsx';
-import { DividendCalendarCard } from './components/DividendCalendarCard.tsx';
-import { IncomeReportCard } from './components/IncomeReportCard.tsx';
-import { EvolutionCard } from './components/EvolutionCard.tsx'; 
-import { TransactionsView } from './components/TransactionsView.tsx';
-import { SettingsView } from './components/SettingsView.tsx';
-import { AIAdvisor } from './components/AIAdvisor.tsx';
-import { AddTransactionModal } from './components/AddTransactionModal.tsx';
-import { Asset, Transaction, AppTheme } from './types.ts';
-import { fetchTickersData } from './services/brapiService.ts';
-import { AVAILABLE_THEMES } from './services/themeService.ts';
+import { Header } from './components/Header';
+import { SummaryCard } from './components/SummaryCard';
+import { PortfolioChart } from './components/PortfolioChart';
+import { BottomNav } from './components/BottomNav';
+import { WalletView } from './components/WalletView';
+import { SplashScreen } from './components/SplashScreen';
+import { InflationAnalysisCard } from './components/InflationAnalysisCard';
+import { DividendCalendarCard } from './components/DividendCalendarCard';
+import { IncomeReportCard } from './components/IncomeReportCard';
+import { EvolutionCard } from './components/EvolutionCard'; 
+import { TransactionsView } from './components/TransactionsView';
+import { SettingsView } from './components/SettingsView';
+import { AIAdvisor } from './components/AIAdvisor';
+import { AddTransactionModal } from './components/AddTransactionModal';
+import { Asset, Transaction, AppTheme } from './types';
+import { fetchTickersData } from './services/brapiService';
+import { AVAILABLE_THEMES } from './services/themeService';
 
-const AssetDetailModal = lazy(() => import('./components/AssetDetailModal.tsx').then(m => ({ default: m.AssetDetailModal })));
-const DividendCalendarModal = lazy(() => import('./components/DividendCalendarModal.tsx').then(m => ({ default: m.DividendCalendarModal })));
-const IncomeReportModal = lazy(() => import('./components/IncomeReportModal.tsx').then(m => ({ default: m.IncomeReportModal })));
-const RealPowerModal = lazy(() => import('./components/RealPowerModal.tsx').then(m => ({ default: m.RealPowerModal })));
-const EvolutionModal = lazy(() => import('./components/EvolutionModal.tsx').then(m => ({ default: m.EvolutionModal })));
-const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then(m => ({ default: m.PortfolioModal })));
+const AssetDetailModal = lazy(() => import('./components/AssetDetailModal').then(m => ({ default: m.AssetDetailModal })));
+const DividendCalendarModal = lazy(() => import('./components/DividendCalendarModal').then(m => ({ default: m.DividendCalendarModal })));
+const IncomeReportModal = lazy(() => import('./components/IncomeReportModal').then(m => ({ default: m.IncomeReportModal })));
+const RealPowerModal = lazy(() => import('./components/RealPowerModal').then(m => ({ default: m.RealPowerModal })));
+const EvolutionModal = lazy(() => import('./components/EvolutionModal').then(m => ({ default: m.EvolutionModal })));
+const PortfolioModal = lazy(() => import('./components/PortfolioModal').then(m => ({ default: m.PortfolioModal })));
 
-// Dados iniciais zerados para produção
 const INITIAL_ASSETS: Asset[] = [];
 
 const App: React.FC = () => {
@@ -37,7 +36,6 @@ const App: React.FC = () => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
-  // Ref para controlar se os dados iniciais já foram carregados e evitar loops
   const hasLoadedInitialData = useRef(false);
 
   const [assets, setAssets] = useState<Asset[]>(() => {
@@ -85,13 +83,11 @@ const App: React.FC = () => {
     setIsRefreshing(true);
     try {
         const tickers = assets.map(a => a.ticker);
-        // Passa 'force' para o serviço. Se true, ignora o cache.
         const liveData = await fetchTickersData(tickers, force);
         
         if (liveData && liveData.length > 0) {
           setAssets(prev => prev.map(asset => {
               const live = liveData.find((l: any) => l.symbol === asset.ticker);
-              // Só atualiza se houver mudança real para evitar renderizações desnecessárias
               if (!live) return asset;
               
               const newTotalValue = live.regularMarketPrice * asset.quantity;
@@ -107,7 +103,6 @@ const App: React.FC = () => {
                 totalValue: newTotalValue,
                 dailyChange: newDailyChange,
                 companyName: live.longName || asset.companyName,
-                // Preserva metadados extras se a API retornar
                 shortName: asset.shortName || live.symbol,
               };
           }));
@@ -122,21 +117,17 @@ const App: React.FC = () => {
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
     if (newData.assets) setAssets(newData.assets);
     if (newData.transactions) setTransactions(newData.transactions);
-    // Força atualização após importação para garantir dados frescos
     setTimeout(() => refreshMarketData(true), 500);
   }, [refreshMarketData]);
 
   const handleSaveTransaction = useCallback((newTransaction: Transaction) => {
-    // 1. Atualizar histórico de transações
     setTransactions(prev => [newTransaction, ...prev]);
 
-    // 2. Atualizar ou Criar Ativo na Carteira
     setAssets(prevAssets => {
       const assetIndex = prevAssets.findIndex(a => a.ticker === newTransaction.ticker);
       
       if (newTransaction.type === 'Compra') {
         if (assetIndex >= 0) {
-          // Atualizar ativo existente
           const asset = prevAssets[assetIndex];
           const newQty = asset.quantity + newTransaction.quantity;
           const newTotalCost = asset.totalCost + newTransaction.total;
@@ -147,7 +138,6 @@ const App: React.FC = () => {
             quantity: newQty,
             totalCost: newTotalCost,
             averagePrice: newAvgPrice,
-            // Atualiza valor total assumindo preço atual de mercado (se disponível) ou preço pago
             totalValue: asset.currentPrice * newQty 
           };
           
@@ -155,7 +145,6 @@ const App: React.FC = () => {
           newList[assetIndex] = updatedAsset;
           return newList;
         } else {
-          // Criar novo ativo
           const newAsset: Asset = {
             id: newTransaction.ticker,
             ticker: newTransaction.ticker,
@@ -182,7 +171,6 @@ const App: React.FC = () => {
           return [...prevAssets, newAsset];
         }
       } else {
-         // Venda
          if (assetIndex >= 0) {
            const asset = prevAssets[assetIndex];
            const newQty = Math.max(0, asset.quantity - newTransaction.quantity);
@@ -191,7 +179,6 @@ const App: React.FC = () => {
              return prevAssets.filter(a => a.ticker !== newTransaction.ticker);
            }
            
-           // Reduz custo total proporcionalmente
            const costRemoved = asset.averagePrice * newTransaction.quantity;
            const newTotalCost = Math.max(0, asset.totalCost - costRemoved);
            
@@ -209,14 +196,11 @@ const App: React.FC = () => {
       }
     });
 
-    // Tenta buscar dados atualizados do novo ativo (forçando refresh para pegar cotação atual)
     setTimeout(() => refreshMarketData(true), 1000);
   }, [refreshMarketData]);
 
-  // Hook para carregar dados iniciais APENAS UMA VEZ após o splash screen
   useEffect(() => {
     if (!isAppLoading && !hasLoadedInitialData.current) {
-      // Carregamento inicial usa cache (force=false)
       refreshMarketData(false);
       hasLoadedInitialData.current = true;
     }
@@ -231,8 +215,8 @@ const App: React.FC = () => {
       '--brand-accent': currentTheme.colors.accent,
       '--brand-highlight': currentTheme.colors.highlight,
       '--brand-muted': currentTheme.colors.muted
-    };
-    Object.entries(styles).forEach(([prop, val]) => root.style.setProperty(prop, val));
+    } as any;
+    Object.entries(styles).forEach(([prop, val]) => root.style.setProperty(prop, val as string));
   }, [currentTheme]);
 
   const summaryData = useMemo(() => {
@@ -279,7 +263,6 @@ const App: React.FC = () => {
           onAddClick={() => setIsAddModalOpen(true)}
           onBackClick={() => setActiveTab(previousTab)}
           onSettingsClick={() => { setPreviousTab(activeTab); setActiveTab('settings'); }}
-          // Botão de refresh força atualização (bypass cache)
           onRefreshClick={() => refreshMarketData(true)}
         />
         

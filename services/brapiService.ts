@@ -1,10 +1,8 @@
 
 /**
  * BRAPI Service for Brazilian Market Data
- * Documentation: https://brapi.dev/docs
  */
 
-// Helper to safely get environment variables without crashing in browser
 const getSafeEnv = (key: string): string => {
   try {
     // @ts-ignore
@@ -17,7 +15,6 @@ const getSafeEnv = (key: string): string => {
   }
 };
 
-// Token configurado com fallback para a chave fornecida
 const BRAPI_TOKEN = getSafeEnv('VITE_BRAPI_TOKEN') || 
                     getSafeEnv('BRAPI_TOKEN_API') || 
                     getSafeEnv('BRAPI_TOKEN') || 
@@ -25,10 +22,9 @@ const BRAPI_TOKEN = getSafeEnv('VITE_BRAPI_TOKEN') ||
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
 
-// --- CACHE SYSTEM CONFIGURATION ---
 const CACHE_PREFIX = 'invest_brapi_cache_';
-const QUOTE_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
-const HISTORY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const QUOTE_CACHE_TTL = 15 * 60 * 1000;
+const HISTORY_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 interface CacheItem<T> {
   data: T;
@@ -48,8 +44,6 @@ const getFromCache = <T>(key: string, ttl: number): T | null => {
       localStorage.removeItem(cacheKey);
       return null;
     }
-
-    console.log(`[BRAPI Cache] Hit para: ${key}`);
     return item.data;
   } catch (err) {
     console.warn("[BRAPI Cache] Erro ao ler cache:", err);
@@ -66,50 +60,36 @@ const saveToCache = <T>(key: string, data: T) => {
     };
     localStorage.setItem(cacheKey, JSON.stringify(item));
   } catch (err) {
-    console.warn("[BRAPI Cache] Erro ao salvar (possível cota excedida):", err);
+    console.warn("[BRAPI Cache] Erro ao salvar:", err);
   }
 };
 
-// --- API FUNCTIONS ---
-
-export const fetchTickersData = async (tickers: string[], forceRefresh = false) => {
+export const fetchTickersData = async (tickers: string[], forceRefresh = false): Promise<any[]> => {
   if (!tickers.length) return [];
   
-  // Create a unique key based on sorted tickers to ensure consistency
   const cacheKey = `quotes_${tickers.slice().sort().join('_')}`;
 
-  // Check cache first if not forced
   if (!forceRefresh) {
     const cached = getFromCache<any[]>(cacheKey, QUOTE_CACHE_TTL);
     if (cached) return cached;
   }
   
   if (!BRAPI_TOKEN) {
-    console.warn("[BRAPI] Alerta: Token ausente. Dados reais não serão carregados.");
+    console.warn("[BRAPI] Alerta: Token ausente.");
     return [];
   }
   
-  console.log(`[BRAPI] Solicitando cotações (Rede): ${tickers.join(', ')}`);
+  console.log(`[BRAPI] Solicitando cotações: ${tickers.join(', ')}`);
   
   try {
     const list = tickers.join(',');
-    // 'fundamental=false' para reduzir tamanho da resposta
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${list}?token=${BRAPI_TOKEN}&fundamental=false`);
     
-    if (response.status === 401) {
-        console.error("[BRAPI] Erro 401: Token inválido ou expirado.");
-        return [];
-    }
-    
-    if (response.status === 429) {
-        console.error("[BRAPI] Erro 429: Rate limit excedido. Usando cache se disponível.");
-        const stale = localStorage.getItem(CACHE_PREFIX + cacheKey);
-        if (stale) return JSON.parse(stale).data;
-        return [];
-    }
-    
     if (!response.ok) {
-        throw new Error(`BRAPI API Response Error: ${response.status}`);
+       // Fallback cache silently if network fails
+       const stale = localStorage.getItem(CACHE_PREFIX + cacheKey);
+       if (stale) return JSON.parse(stale).data;
+       return [];
     }
     
     const data = await response.json();
@@ -121,15 +101,14 @@ export const fetchTickersData = async (tickers: string[], forceRefresh = false) 
     
     return results;
   } catch (error) {
-    console.error("[BRAPI] Falha crítica na busca de dados:", error);
-    // Fallback to cache on error
+    console.error("[BRAPI] Falha crítica:", error);
     const stale = localStorage.getItem(CACHE_PREFIX + cacheKey);
     if (stale) return JSON.parse(stale).data;
     return [];
   }
 };
 
-export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo', forceRefresh = false) => {
+export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo', forceRefresh = false): Promise<any[]> => {
   if (!BRAPI_TOKEN) return [];
 
   const cacheKey = `history_${ticker}_${range}_${interval}`;
@@ -140,7 +119,6 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
   }
 
   try {
-    console.log(`[BRAPI] Solicitando histórico (Rede): ${ticker}`);
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}&fundamental=false`);
     
     if (!response.ok) return [];

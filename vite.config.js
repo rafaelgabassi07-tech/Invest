@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -11,9 +10,9 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: true, // Permite acesso externo (importante para alguns ambientes de preview)
+    host: true,
     hmr: {
-      clientPort: 443 // Força HMR via HTTPS se estiver atrás de um proxy
+      clientPort: 443
     }
   },
   resolve: {

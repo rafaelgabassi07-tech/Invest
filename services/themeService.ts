@@ -48,7 +48,7 @@ export const AVAILABLE_THEMES: AppTheme[] = [
     id: 'soft-amethyst',
     name: 'Ametista Soft',
     type: 'light',
-    colors: { primary: '#8b5cf6', secondary: '#7c3aed', accent: '#a78bfa', highlight: '#f5f3ff', muted: '#ffffff' }, 
+    colors: { primary: '#8b5cf6', secondary: '#7c3aed', accent: '#a78bfa', highlight: 'rgba(59, 130, 246, 0.1)', muted: '#ffffff' }, 
     preview: 'linear-gradient(135deg, #8b5cf6 0%, #ffffff 100%)'
   },
   {
