@@ -1,5 +1,5 @@
 
-const CACHE_VERSION = 'v2.1';
+const CACHE_VERSION = 'v2.2';
 const STATIC_CACHE = `invest-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `invest-runtime-${CACHE_VERSION}`;
 
@@ -42,30 +42,49 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Estratégia: Network First (para o index.html e manifest)
-  // Garante que o usuário sempre tenha a versão mais recente, mas funciona offline.
-  if (event.request.mode === 'navigate' || url.pathname.endsWith('manifest.json')) {
+  // 1. Estratégia: Network First (para navegação e manifest)
+  // Para SPA, se falhar a rede na navegação, retornamos o index.html do cache (App Shell)
+  if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(STATIC_CACHE).then((cache) => cache.put(event.request, copy));
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => {
+          // Fallback para o index.html em caso de offline
+          return caches.match('/index.html').then(response => {
+             return response || caches.match('/');
+          });
+        })
     );
     return;
   }
 
-  // 2. Estratégia: Cache First (para dependências externas do esm.sh e fontes)
-  // Esses recursos são versionados ou imutáveis, então podemos confiar no cache.
+  // 1.1 Manifest (Network First simple)
+  if (url.pathname.endsWith('manifest.json')) {
+     event.respondWith(
+        fetch(event.request)
+        .then(response => {
+            const copy = response.clone();
+            caches.open(STATIC_CACHE).then(cache => cache.put(event.request, copy));
+            return response;
+        })
+        .catch(() => caches.match(event.request))
+     );
+     return;
+  }
+
+  // 2. Estratégia: Cache First (para dependências externas e ativos imutáveis)
   if (url.hostname.includes('esm.sh') || url.hostname.includes('gstatic.com') || url.hostname.includes('flaticon.com')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
         
         return fetch(event.request).then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200) return networkResponse;
+          // Cache apenas respostas válidas
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors') {
+             return networkResponse;
+          }
           
           const copy = networkResponse.clone();
           caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, copy));
@@ -76,8 +95,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Estratégia: Stale-While-Revalidate (para outros ativos locais)
-  // Serve do cache imediatamente e atualiza o cache em background.
+  // 3. Estratégia: Stale-While-Revalidate (para outros ativos locais como JS/CSS do build)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
@@ -86,7 +104,9 @@ self.addEventListener('fetch', (event) => {
           caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, copy));
         }
         return networkResponse;
-      }).catch(() => null);
+      }).catch((e) => {
+          console.warn('[SW] Fetch failed:', e);
+      });
 
       return cachedResponse || fetchPromise;
     })

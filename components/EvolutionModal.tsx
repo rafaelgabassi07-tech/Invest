@@ -45,7 +45,7 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
                     <div>
                         <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Crescimento no Período</p>
                         <div className="flex items-center gap-4">
-                            <h2 className="text-5xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            <h2 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white tracking-tight">
                                 R$ {totalGrowthValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </h2>
                             <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
@@ -73,7 +73,7 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
                 </div>
 
                 {/* Main Chart */}
-                <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex-1 min-h-[400px] relative mb-8 flex items-center justify-center">
+                <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 lg:p-10 border border-gray-200 dark:border-white/5 shadow-xl flex-1 min-h-[400px] lg:min-h-[500px] relative mb-8 flex items-center justify-center">
                      {!hasData ? (
                         <div className="text-center opacity-40">
                             <BarChart2 size={64} className="mx-auto mb-4 text-gray-500" />
@@ -104,33 +104,33 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
 
                 {/* Footer Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                     <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg flex items-center gap-5">
-                         <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                             <Wallet size={28} />
+                     <div className="bg-white dark:bg-[#1c1c1e] p-6 lg:p-8 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg flex items-center gap-5">
+                         <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500 shrink-0">
+                             <Wallet size={32} />
                          </div>
                          <div>
                             <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Total Investido</p>
-                            <p className="text-gray-900 dark:text-white font-bold text-2xl">R$ 0,00</p>
+                            <p className="text-gray-900 dark:text-white font-bold text-2xl lg:text-3xl">R$ 0,00</p>
                          </div>
                      </div>
                      
-                     <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg flex items-center gap-5">
-                         <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                             <TrendingUp size={28} />
+                     <div className="bg-white dark:bg-[#1c1c1e] p-6 lg:p-8 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg flex items-center gap-5">
+                         <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                             <TrendingUp size={32} />
                          </div>
                          <div>
                             <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Lucro de Capital</p>
-                            <p className="text-emerald-500 font-bold text-2xl">+ R$ 0,00</p>
+                            <p className="text-emerald-500 font-bold text-2xl lg:text-3xl">+ R$ 0,00</p>
                          </div>
                      </div>
 
-                     <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg flex items-center gap-5">
-                         <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                             <Share2 size={28} />
+                     <div className="bg-white dark:bg-[#1c1c1e] p-6 lg:p-8 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg flex items-center gap-5">
+                         <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                             <Share2 size={32} />
                          </div>
                          <div>
                             <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Proventos Acumulados</p>
-                            <p className="text-amber-500 font-bold text-2xl">R$ 0,00</p>
+                            <p className="text-amber-500 font-bold text-2xl lg:text-3xl">R$ 0,00</p>
                          </div>
                      </div>
                 </div>

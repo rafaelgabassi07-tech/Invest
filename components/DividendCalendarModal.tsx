@@ -67,7 +67,7 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ as
                 
                 {/* Left: Interactive Calendar */}
                 <div className="flex-1 flex flex-col">
-                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 shadow-xl relative overflow-hidden mb-6">
+                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 shadow-xl relative overflow-hidden mb-6 flex-1">
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                                 <span className="capitalize">{MONTHS[currentDate.getMonth()]}</span>
@@ -92,7 +92,7 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ as
                         </div>
                         <div className="grid grid-cols-7 gap-2 lg:gap-4 auto-rows-fr">
                             {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-                                <div key={`empty-${i}`} className="h-24 lg:h-32"></div>
+                                <div key={`empty-${i}`} className="h-24 lg:h-32 xl:h-40 bg-transparent"></div>
                             ))}
                             {Array.from({ length: daysInMonth }).map((_, i) => {
                                 const day = i + 1;
@@ -101,7 +101,7 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ as
                                 const isToday = day === new Date().getDate() && currentDate.getMonth() === new Date().getMonth();
 
                                 return (
-                                    <div key={day} className={`h-24 lg:h-32 rounded-2xl border p-2 flex flex-col justify-between transition-all hover:shadow-md ${isToday ? 'bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-500/30' : 'bg-gray-50/50 dark:bg-[#2c2c2e]/50 border-gray-100 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}>
+                                    <div key={day} className={`h-24 lg:h-32 xl:h-40 rounded-2xl border p-2 lg:p-3 flex flex-col justify-between transition-all hover:shadow-md ${isToday ? 'bg-indigo-50/50 dark:bg-indigo-500/10 border-indigo-500/30' : 'bg-gray-50/50 dark:bg-[#2c2c2e]/50 border-gray-100 dark:border-white/5 hover:border-gray-300 dark:hover:border-white/20'}`}>
                                         <div className="flex justify-between items-start">
                                             <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-500 text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                                                 {day}
@@ -143,7 +143,7 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ as
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex-1 flex flex-col overflow-hidden">
+                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex-1 flex flex-col overflow-hidden max-h-[500px] lg:max-h-full">
                          <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-6 flex items-center gap-2 px-2">
                             <CalendarIcon size={20} className="text-gray-400" />
                             Próximos Pagamentos

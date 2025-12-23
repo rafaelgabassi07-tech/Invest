@@ -176,7 +176,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
                         <FileText size={20} className="text-brand-500" />
                         Histórico de Transações
                     </h3>
-                    <div className="space-y-3 max-w-3xl">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {assetTransactions.length > 0 ? assetTransactions.map((trans) => (
                         <div key={trans.id} className="bg-gray-50 dark:bg-[#2c2c2e]/40 p-5 rounded-2xl border border-gray-100 dark:border-white/5 flex justify-between items-center transition-transform hover:scale-[1.01]">
                         <div className="flex items-center gap-4">
@@ -194,7 +194,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
                         </div>
                         </div>
                     )) : (
-                        <div className="py-20 text-center opacity-40">
+                        <div className="col-span-2 py-20 text-center opacity-40">
                         <FileText size={48} className="mx-auto mb-4 text-gray-300" />
                         <p className="text-base font-bold text-gray-500">Nenhuma movimentação registrada</p>
                         </div>

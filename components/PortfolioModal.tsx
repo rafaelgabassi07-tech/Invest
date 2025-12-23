@@ -158,7 +158,7 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
                     <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 relative overflow-hidden shadow-xl flex-1 min-h-[500px] flex flex-col justify-center items-center">
                         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-gray-50/50 dark:from-white/[0.02] to-transparent pointer-events-none"></div>
                         
-                        <div className="w-full h-full relative z-10 flex-1 min-h-[400px]">
+                        <div className="w-full h-full relative z-10 flex-1 min-h-[400px] flex items-center justify-center">
                             <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -213,7 +213,7 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
                     </div>
 
                     {/* Breakdown List */}
-                    <div className="flex-1 bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex flex-col overflow-hidden h-[500px] lg:h-auto">
+                    <div className="flex-1 bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex flex-col overflow-hidden max-h-[500px] lg:max-h-full">
                         <h3 className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-6 px-2">
                             Detalhamento por {viewMode === 'assets' ? 'Ativo' : viewMode === 'segments' ? 'Segmento' : 'Classe'}
                         </h3>

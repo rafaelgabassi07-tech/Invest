@@ -105,116 +105,116 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   }
 
   return (
-    <div className="fixed inset-0 md:left-72 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto pl-0 md:pl-72">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose} />
       
-      <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-md max-h-[90vh] sm:h-auto sm:rounded-[2rem] rounded-t-[2rem] flex flex-col relative z-10 shadow-2xl animate-slide-up overflow-hidden border border-gray-200 dark:border-white/5">
+      <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-md max-h-[90vh] sm:h-auto sm:rounded-[2.5rem] rounded-t-[2.5rem] flex flex-col relative z-10 shadow-2xl animate-slide-up overflow-hidden border border-gray-200 dark:border-white/5 m-0 md:m-4">
         
         {/* Header - Compact */}
-        <div className="px-5 py-4 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl sticky top-0 z-20">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            {initialTransaction ? <Edit3 size={16} className="text-brand-500" /> : null}
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl sticky top-0 z-20">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            {initialTransaction ? <Edit3 size={18} className="text-brand-500" /> : null}
             {initialTransaction ? 'Editar Movimentação' : 'Nova Movimentação'}
           </h2>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 dark:bg-[#2c2c2e] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
-            <X size={14} />
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-[#2c2c2e] flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors border border-transparent dark:border-white/5">
+            <X size={16} />
           </button>
         </div>
 
-        <div className="p-5 overflow-y-auto custom-scrollbar flex-1">
+        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
           
           {/* Operation Type Switch - Compact */}
-          <div className="bg-gray-100 dark:bg-[#2c2c2e] p-1 rounded-lg flex mb-4">
+          <div className="bg-gray-100 dark:bg-[#2c2c2e] p-1.5 rounded-xl flex mb-6">
             <button 
               onClick={() => setOperation('Compra')}
-              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${operation === 'Compra' ? 'bg-white dark:bg-[#3a3a3c] text-emerald-600 dark:text-emerald-500 shadow-sm' : 'text-gray-500'}`}
+              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${operation === 'Compra' ? 'bg-white dark:bg-[#3a3a3c] text-emerald-600 dark:text-emerald-500 shadow-sm' : 'text-gray-500'}`}
             >
               Compra
             </button>
             <button 
               onClick={() => setOperation('Venda')}
-              className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${operation === 'Venda' ? 'bg-white dark:bg-[#3a3a3c] text-rose-600 dark:text-rose-500 shadow-sm' : 'text-gray-500'}`}
+              className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${operation === 'Venda' ? 'bg-white dark:bg-[#3a3a3c] text-rose-600 dark:text-rose-500 shadow-sm' : 'text-gray-500'}`}
             >
               Venda
             </button>
           </div>
 
           {/* Asset Type Selector - Compact Grid */}
-          <div className="mb-4">
-             <div className="grid grid-cols-2 gap-2">
+          <div className="mb-6">
+             <div className="grid grid-cols-2 gap-3">
                 <div 
                   onClick={() => setAssetType('FII')}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-2 ${assetType === 'FII' ? 'border-brand-500 bg-brand-500/5' : 'border-gray-100 dark:border-white/5 bg-white dark:bg-[#2c2c2e]'}`}
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center gap-3 ${assetType === 'FII' ? 'border-brand-500 bg-brand-500/5' : 'border-gray-100 dark:border-white/5 bg-white dark:bg-[#2c2c2e]'}`}
                 >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${assetType === 'FII' ? 'bg-brand-500 text-white' : 'bg-gray-100 dark:bg-[#1c1c1e] text-gray-400'}`}>
-                        <Building2Icon size={14} />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${assetType === 'FII' ? 'bg-brand-500 text-white' : 'bg-gray-100 dark:bg-[#1c1c1e] text-gray-400'}`}>
+                        <Building2Icon size={16} />
                     </div>
                     <div>
-                        <p className={`text-xs font-bold ${assetType === 'FII' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>Fundo Imob.</p>
-                        <p className="text-[9px] text-gray-400">FII / Fiagro</p>
+                        <p className={`text-sm font-bold ${assetType === 'FII' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>Fundo Imob.</p>
+                        <p className="text-[10px] text-gray-400">FII / Fiagro</p>
                     </div>
                 </div>
                 <div 
                   onClick={() => setAssetType('AÇÃO')}
-                  className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center gap-2 ${assetType === 'AÇÃO' ? 'border-brand-500 bg-brand-500/5' : 'border-gray-100 dark:border-white/5 bg-white dark:bg-[#2c2c2e]'}`}
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center gap-3 ${assetType === 'AÇÃO' ? 'border-brand-500 bg-brand-500/5' : 'border-gray-100 dark:border-white/5 bg-white dark:bg-[#2c2c2e]'}`}
                 >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${assetType === 'AÇÃO' ? 'bg-brand-500 text-white' : 'bg-gray-100 dark:bg-[#1c1c1e] text-gray-400'}`}>
-                        <TrendingUpIcon size={14} />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${assetType === 'AÇÃO' ? 'bg-brand-500 text-white' : 'bg-gray-100 dark:bg-[#1c1c1e] text-gray-400'}`}>
+                        <TrendingUpIcon size={16} />
                     </div>
                     <div>
-                        <p className={`text-xs font-bold ${assetType === 'AÇÃO' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>Ação</p>
-                        <p className="text-[9px] text-gray-400">Bolsa B3</p>
+                        <p className={`text-sm font-bold ${assetType === 'AÇÃO' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`}>Ação</p>
+                        <p className="text-[10px] text-gray-400">Bolsa B3</p>
                     </div>
                 </div>
              </div>
           </div>
 
           {/* Inputs - Compact */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             
             {/* Ticker */}
             <div className="group">
-              <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1 block">Código do Ativo</label>
-              <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-2.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
-                <Tag size={16} className="text-gray-400 mr-2" />
+              <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1.5 block">Código do Ativo</label>
+              <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-3 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
+                <Tag size={18} className="text-gray-400 mr-2" />
                 <input 
                   type="text" 
                   value={ticker}
                   onChange={(e) => setTicker(e.target.value.toUpperCase())}
                   placeholder={assetType === 'FII' ? 'Ex: HGLG11' : 'Ex: VALE3'}
-                  className="bg-transparent w-full outline-none text-sm font-bold text-gray-900 dark:text-white placeholder-gray-400 uppercase"
+                  className="bg-transparent w-full outline-none text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 uppercase"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-4">
                 {/* Quantity */}
                 <div className="group flex-1">
-                <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1 block">Quantidade</label>
-                <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-2.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
-                    <Hash size={16} className="text-gray-400 mr-2" />
+                <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1.5 block">Quantidade</label>
+                <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-3 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
+                    <Hash size={18} className="text-gray-400 mr-2" />
                     <input 
                     type="number" 
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="0"
-                    className="bg-transparent w-full outline-none text-sm font-bold text-gray-900 dark:text-white placeholder-gray-400"
+                    className="bg-transparent w-full outline-none text-base font-bold text-gray-900 dark:text-white placeholder-gray-400"
                     />
                 </div>
                 </div>
 
                 {/* Price */}
                 <div className="group flex-1">
-                <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1 block">Preço Unitário</label>
-                <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-2.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
-                    <DollarSign size={16} className="text-gray-400 mr-1" />
+                <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1.5 block">Preço Unitário</label>
+                <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-3 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
+                    <DollarSign size={18} className="text-gray-400 mr-1" />
                     <input 
                     type="number" 
                     step="0.01"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="0,00"
-                    className="bg-transparent w-full outline-none text-sm font-bold text-gray-900 dark:text-white placeholder-gray-400"
+                    className="bg-transparent w-full outline-none text-base font-bold text-gray-900 dark:text-white placeholder-gray-400"
                     />
                 </div>
                 </div>
@@ -222,22 +222,22 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
 
             {/* Date */}
             <div className="group">
-              <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1 block">Data da Negociação</label>
-              <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-2.5 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
-                <Calendar size={16} className="text-gray-400 mr-2" />
+              <label className="text-gray-500 text-[10px] font-bold uppercase ml-1 mb-1.5 block">Data da Negociação</label>
+              <div className="bg-white dark:bg-[#2c2c2e]/50 rounded-xl border border-gray-200 dark:border-white/10 flex items-center px-3 py-3 focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/20 transition-all">
+                <Calendar size={18} className="text-gray-400 mr-2" />
                 <input 
                   type="date" 
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="bg-transparent w-full outline-none text-sm font-bold text-gray-900 dark:text-white placeholder-gray-400 appearance-none"
+                  className="bg-transparent w-full outline-none text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 appearance-none"
                 />
               </div>
             </div>
 
             {/* Total Preview - Compact */}
-            <div className="mt-4 p-3 rounded-xl bg-gray-50 dark:bg-[#2c2c2e]/30 border border-gray-200 dark:border-white/5 flex justify-between items-center">
-                <span className="text-[10px] font-bold text-gray-500 uppercase">Total Estimado</span>
-                <span className="text-base font-bold text-gray-900 dark:text-white">
+            <div className="mt-6 p-4 rounded-2xl bg-gray-50 dark:bg-[#2c2c2e]/30 border border-gray-200 dark:border-white/5 flex justify-between items-center">
+                <span className="text-xs font-bold text-gray-500 uppercase">Total Estimado</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-white">
                     R$ {((Number(quantity) || 0) * (Number(price) || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
             </div>
@@ -246,13 +246,13 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
         </div>
 
         {/* Footer Actions */}
-        <div className="p-5 border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#1c1c1e]">
+        <div className="p-6 border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#1c1c1e]">
             <button 
                 onClick={handleSubmit}
                 disabled={!ticker || !quantity || !price}
-                className={`w-full py-3.5 rounded-xl text-white font-bold text-sm uppercase tracking-wide shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${!ticker || !quantity || !price ? 'bg-gray-300 dark:bg-[#2c2c2e] text-gray-500 cursor-not-allowed shadow-none' : 'bg-brand-500 hover:bg-brand-600 shadow-brand-500/30'}`}
+                className={`w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wide shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${!ticker || !quantity || !price ? 'bg-gray-300 dark:bg-[#2c2c2e] text-gray-500 cursor-not-allowed shadow-none' : 'bg-brand-500 hover:bg-brand-600 shadow-brand-500/30'}`}
             >
-                <CheckCircle2 size={18} />
+                <CheckCircle2 size={20} />
                 {initialTransaction ? 'Salvar Alterações' : 'Salvar Movimentação'}
             </button>
         </div>
