@@ -64,11 +64,11 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 bg-brand-accent/10 px-3 py-1.5 rounded-xl border border-brand-accent/10">
             <TrendingUp size={14} className="text-brand-accent" />
-            <span className="text-brand-accent text-xs font-bold tabular-nums">{data.dailyChange.toFixed(2)}%</span>
+            <span className="text-brand-accent text-xs font-bold tabular-nums">{data.dailyChange >= 0 ? '+' : ''}{data.dailyChange.toFixed(2)}%</span>
           </div>
           <span className="text-gray-500 dark:text-gray-400 text-xs font-bold tabular-nums flex items-center gap-1">
              <ArrowUpRight size={12} className="text-brand-primary" />
-             R$ {data.dailyChangeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+             R$ {data.dailyChangeValue >= 0 ? '+' : ''}{data.dailyChangeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </span>
         </div>
       </div>
@@ -95,7 +95,7 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
         <div>
           <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Ganho de Capital</p>
           <p className="text-brand-accent font-bold text-lg tracking-tight tabular-nums">
-            R$ {data.capitalGain.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            R$ {data.capitalGain >= 0 ? '+' : ''}{data.capitalGain.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
         </div>
       </div>

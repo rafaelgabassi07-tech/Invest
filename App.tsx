@@ -26,7 +26,6 @@ const RealPowerModal = lazy(() => import('./components/RealPowerModal.tsx').then
 const EvolutionModal = lazy(() => import('./components/EvolutionModal.tsx').then(m => ({ default: m.EvolutionModal })));
 const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then(m => ({ default: m.PortfolioModal })));
 
-// Dados iniciais zerados para produção
 const INITIAL_ASSETS: Asset[] = [];
 
 const App: React.FC = () => {
@@ -36,8 +35,6 @@ const App: React.FC = () => {
   const [previousTab, setPreviousTab] = useState('dashboard'); 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [modalOpen, setModalOpen] = useState<string | null>(null);
-  
-  // State for Add/Edit Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   
@@ -45,40 +42,33 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('invest_assets');
       if (!saved) return INITIAL_ASSETS;
+      // Added explicit casting to avoid 'unknown' issues during summary calculation
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : INITIAL_ASSETS;
-    } catch (e) {
-      return INITIAL_ASSETS;
-    }
+      return Array.isArray(parsed) ? (parsed as Asset[]) : INITIAL_ASSETS;
+    } catch (e) { return INITIAL_ASSETS; }
   });
 
-  // Refs to break dependency cycles in callbacks
   const assetsRef = useRef(assets);
   const isRefreshingRef = useRef(false);
+  const lastRefreshTimeRef = useRef(0);
 
-  useEffect(() => {
-      assetsRef.current = assets;
-  }, [assets]);
+  useEffect(() => { assetsRef.current = assets; }, [assets]);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
       const saved = localStorage.getItem('invest_transactions');
       if (!saved) return [];
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (e) {
-      return [];
-    }
+      return Array.isArray(parsed) ? (parsed as Transaction[]) : [];
+    } catch (e) { return []; }
   });
 
   const [currentTheme, setCurrentTheme] = useState<AppTheme>(() => {
     try {
       const saved = localStorage.getItem('invest_theme');
       if (!saved) return AVAILABLE_THEMES[0];
-      return JSON.parse(saved);
-    } catch (e) {
-      return AVAILABLE_THEMES[0];
-    }
+      return JSON.parse(saved) as AppTheme;
+    } catch (e) { return AVAILABLE_THEMES[0]; }
   });
 
   useEffect(() => {
@@ -89,16 +79,15 @@ const App: React.FC = () => {
 
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
-  // Optimized refresh function: No dependencies, uses Ref for locking
-  const refreshMarketData = useCallback(async () => {
-    // 1. Check lock via Ref (instant, no re-render dependency)
+  const refreshMarketData = useCallback(async (force = false) => {
+    const now = Date.now();
+    // Throttle: Impede atualizações automáticas se a última foi há menos de 30 segundos
+    if (!force && now - lastRefreshTimeRef.current < 30000) return;
     if (isRefreshingRef.current) return;
     
-    // 2. Check if we have assets to update
     const currentAssets = assetsRef.current;
     if (currentAssets.length === 0) return;
     
-    // 3. Set lock and UI state
     isRefreshingRef.current = true;
     setIsRefreshing(true);
 
@@ -107,6 +96,7 @@ const App: React.FC = () => {
         const liveData = await fetchTickersData(tickers);
         
         if (liveData && liveData.length > 0) {
+          lastRefreshTimeRef.current = Date.now();
           setAssets(prev => prev.map(asset => {
               const live = liveData.find((l: any) => l.symbol === asset.ticker);
               return live ? {
@@ -121,7 +111,6 @@ const App: React.FC = () => {
     } catch (err) {
         console.error("[App] Erro de mercado:", err);
     } finally {
-        // 4. Release lock
         isRefreshingRef.current = false;
         setIsRefreshing(false);
     }
@@ -130,14 +119,11 @@ const App: React.FC = () => {
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
     if (newData.assets) setAssets(newData.assets);
     if (newData.transactions) setTransactions(newData.transactions);
-    setTimeout(() => refreshMarketData(), 500);
+    setTimeout(() => refreshMarketData(true), 500);
   }, [refreshMarketData]);
 
-  // --- LOGIC CORE: Transaction Management ---
-  
   const recalculateAssetFromHistory = (ticker: string, allTransactions: Transaction[], currentAssets: Asset[]) => {
     const assetTransactions = allTransactions.filter(t => t.ticker === ticker);
-
     assetTransactions.sort((a, b) => {
         const parseDate = (d: string) => {
             const months: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
@@ -150,119 +136,75 @@ const App: React.FC = () => {
 
     let quantity = 0;
     let totalCost = 0;
-
     for (const t of assetTransactions) {
-        if (t.type === 'Compra') {
-            quantity += t.quantity;
-            totalCost += t.total; 
-        } else if (t.type === 'Venda') {
+        if (t.type === 'Compra') { quantity += t.quantity; totalCost += t.total; } 
+        else if (t.type === 'Venda') {
             const currentAvgPrice = quantity > 0 ? totalCost / quantity : 0;
             const qtySold = Math.min(quantity, t.quantity);
             quantity -= qtySold;
             totalCost -= (qtySold * currentAvgPrice);
         }
     }
-
     const existingAsset = currentAssets.find(a => a.ticker === ticker);
     const lastTransPrice = assetTransactions.length > 0 ? assetTransactions[assetTransactions.length - 1].price : 0;
-
-    if (quantity <= 0.0001) {
-        return currentAssets.filter(a => a.ticker !== ticker);
-    }
-
+    if (quantity <= 0.0001) return currentAssets.filter(a => a.ticker !== ticker);
     const avgPrice = quantity > 0 ? totalCost / quantity : 0;
     const currentPrice = existingAsset ? existingAsset.currentPrice : lastTransPrice;
-
     const updatedAsset: Asset = {
         ...(existingAsset || {
-            id: ticker,
-            ticker: ticker,
-            shortName: ticker.substring(0, 4),
-            companyName: ticker,
+            id: ticker, ticker: ticker, shortName: ticker.substring(0, 4), companyName: ticker,
             assetType: ticker.endsWith('11') || ticker.endsWith('34') || ticker.endsWith('39') ? 'FII' : 'Ação',
-            dailyChange: 0,
-            lastDividend: 0,
-            lastDividendDate: '',
-            dy12m: 0,
-            color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
-            pvp: 1,
-            vp: 0,
-            liquidity: 'N/A',
-            netWorth: 'N/A',
-            segment: 'Outros',
-            allocationType: 'Outros'
+            dailyChange: 0, lastDividend: 0, lastDividendDate: '', dy12m: 0, color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
+            pvp: 1, vp: 0, liquidity: 'N/A', netWorth: 'N/A', segment: 'Outros', allocationType: 'Outros'
         }),
-        quantity: Number(quantity.toFixed(8)),
-        totalCost: totalCost,
-        averagePrice: avgPrice,
-        currentPrice: currentPrice,
-        totalValue: quantity * currentPrice
+        quantity: Number(quantity.toFixed(8)), totalCost, averagePrice: avgPrice, currentPrice, totalValue: quantity * currentPrice
     };
-
-    if (existingAsset) {
-        return currentAssets.map(a => a.ticker === ticker ? updatedAsset : a);
-    } else {
-        return [updatedAsset, ...currentAssets];
-    }
+    return existingAsset ? currentAssets.map(a => a.ticker === ticker ? updatedAsset : a) : [updatedAsset, ...currentAssets];
   };
 
   const handleSaveTransaction = useCallback((newTransaction: Transaction) => {
-    let updatedTransactions: Transaction[] = [];
-    
+    let updated: Transaction[] = [];
     setTransactions(prev => {
-        const exists = prev.some(t => t.id === newTransaction.id);
-        if (exists) {
-            updatedTransactions = prev.map(t => t.id === newTransaction.id ? newTransaction : t);
-        } else {
-            updatedTransactions = [newTransaction, ...prev];
-        }
-        return updatedTransactions;
+        updated = prev.some(t => t.id === newTransaction.id) ? prev.map(t => t.id === newTransaction.id ? newTransaction : t) : [newTransaction, ...prev];
+        return updated;
     });
-
-    setAssets(prevAssets => recalculateAssetFromHistory(newTransaction.ticker, updatedTransactions, prevAssets));
-    setTimeout(() => refreshMarketData(), 500);
+    setAssets(prev => recalculateAssetFromHistory(newTransaction.ticker, updated, prev));
+    setTimeout(() => refreshMarketData(true), 500);
   }, [refreshMarketData]);
 
-  const handleDeleteTransaction = useCallback((transactionId: string) => {
-    const transactionToDelete = transactions.find(t => t.id === transactionId);
-    if (!transactionToDelete) return;
-
-    const updatedTransactions = transactions.filter(t => t.id !== transactionId);
-    setTransactions(updatedTransactions);
-
-    setAssets(prevAssets => recalculateAssetFromHistory(transactionToDelete.ticker, updatedTransactions, prevAssets));
+  const handleDeleteTransaction = useCallback((id: string) => {
+    const t = transactions.find(x => x.id === id);
+    if (!t) return;
+    const updated = transactions.filter(x => x.id !== id);
+    setTransactions(updated);
+    setAssets(prev => recalculateAssetFromHistory(t.ticker, updated, prev));
   }, [transactions]);
 
-  // --- End Logic Core ---
-
-  // Initial load only
   useEffect(() => {
-    if (!isAppLoading) {
-        // Safe to call, internal logic handles locking
-        refreshMarketData();
-    }
+    if (!isAppLoading) { refreshMarketData(); }
   }, [isAppLoading, refreshMarketData]);
 
   useEffect(() => {
     const root = document.documentElement;
     currentTheme.type === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
-    const styles = {
-      '--brand-primary': currentTheme.colors.primary,
-      '--brand-secondary': currentTheme.colors.secondary,
-      '--brand-accent': currentTheme.colors.accent,
-      '--brand-highlight': currentTheme.colors.highlight,
-      '--brand-muted': currentTheme.colors.muted
-    };
-    Object.entries(styles).forEach(([prop, val]) => root.style.setProperty(prop, val));
+    // Fix: Explicitly cast 'v' to string to satisfy setProperty parameter type
+    Object.entries(currentTheme.colors).forEach(([k, v]) => root.style.setProperty(`--brand-${k}`, v as string));
   }, [currentTheme]);
 
   const summaryData = useMemo(() => {
     let balance = 0, cost = 0, projected = 0, weightedChange = 0;
     assets.forEach(a => {
-        balance += (a.totalValue || 0);
-        cost += (a.totalCost || 0);
-        projected += ((a.lastDividend || 0) * (a.quantity || 0) * 12);
-        weightedChange += ((a.dailyChange || 0) * (a.totalValue || 0));
+        // Fix: Explicitly ensure properties are treated as numbers to resolve potential 'unknown' assignment issues
+        const val = Number(a.totalValue || 0);
+        const cst = Number(a.totalCost || 0);
+        const div = Number(a.lastDividend || 0);
+        const qty = Number(a.quantity || 0);
+        const chg = Number(a.dailyChange || 0);
+
+        balance += val; 
+        cost += cst;
+        projected += (div * qty * 12);
+        weightedChange += (chg * val);
     });
     const weightedAvgChange = balance > 0 ? weightedChange / balance : 0;
     return {
@@ -291,9 +233,7 @@ const App: React.FC = () => {
         style={{ background: `radial-gradient(circle at 50% -20%, var(--brand-highlight), var(--brand-muted) ${currentTheme.type === 'dark' ? '60%' : '80%'})` }}
     >
       <div className="bg-noise opacity-[0.02] absolute inset-0 pointer-events-none"></div>
-      
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} currentTheme={currentTheme} />
-
       <div className="flex-1 flex flex-col h-screen relative z-10 w-full overflow-hidden">
         <Header 
           title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
@@ -303,86 +243,34 @@ const App: React.FC = () => {
           onAddClick={() => { setTransactionToEdit(null); setIsAddModalOpen(true); }}
           onBackClick={() => setActiveTab(previousTab)}
           onSettingsClick={() => { setPreviousTab(activeTab); setActiveTab('settings'); }}
-          onRefreshClick={refreshMarketData}
+          onRefreshClick={() => refreshMarketData(true)}
         />
-        
         <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 md:pb-6 overscroll-contain">
           <div className="w-full md:px-6 md:max-w-7xl md:mx-auto">
-            
             {activeTab === 'dashboard' && (
               <div className="space-y-4 pt-2 pb-4">
                 <div className="grid grid-cols-1 md:grid-cols-12 md:gap-6 gap-3 px-1 md:px-0">
-                  <div className="md:col-span-8">
-                    <SummaryCard data={summaryData} />
-                  </div>
-                  <div className="md:col-span-4">
-                     <PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} />
-                  </div>
-                  <div className="md:col-span-6 lg:col-span-3">
-                    <EvolutionCard onClick={() => setModalOpen('evolution')} />
-                  </div>
-                  <div className="md:col-span-6 lg:col-span-3">
-                    <DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} />
-                  </div>
-                  <div className="md:col-span-6 lg:col-span-3">
-                    <IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} />
-                  </div>
-                  <div className="md:col-span-6 lg:col-span-3">
-                    <InflationAnalysisCard onClick={() => setModalOpen('realPower')} />
-                  </div>
+                  <div className="md:col-span-8"><SummaryCard data={summaryData} /></div>
+                  <div className="md:col-span-4"><PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} /></div>
+                  <div className="md:col-span-6 lg:col-span-3"><EvolutionCard onClick={() => setModalOpen('evolution')} /></div>
+                  <div className="md:col-span-6 lg:col-span-3"><DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} /></div>
+                  <div className="md:col-span-6 lg:col-span-3"><IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} /></div>
+                  <div className="md:col-span-6 lg:col-span-3"><InflationAnalysisCard onClick={() => setModalOpen('realPower')} /></div>
                 </div>
               </div>
             )}
-
-            {activeTab === 'wallet' && (
-              <div className="max-w-5xl mx-auto">
-                <WalletView assets={assets} onAssetClick={setSelectedAsset} />
-              </div>
-            )}
-            
-            {activeTab === 'transactions' && (
-              <div className="max-w-5xl mx-auto">
-                <TransactionsView 
-                    transactions={transactions} 
-                    onEditTransaction={(t) => { 
-                        setTransactionToEdit(t); 
-                        setIsAddModalOpen(true); 
-                    }} 
-                />
-              </div>
-            )}
-            
+            {activeTab === 'wallet' && <div className="max-w-5xl mx-auto"><WalletView assets={assets} onAssetClick={setSelectedAsset} /></div>}
+            {activeTab === 'transactions' && <div className="max-w-5xl mx-auto"><TransactionsView transactions={transactions} onEditTransaction={(t) => { setTransactionToEdit(t); setIsAddModalOpen(true); }} /></div>}
             {activeTab === 'settings' && (
               <div className="max-w-4xl mx-auto">
-                <SettingsView 
-                  currentTheme={currentTheme} 
-                  setCurrentTheme={setCurrentTheme} 
-                  availableThemes={AVAILABLE_THEMES}
-                  assets={assets}
-                  transactions={transactions}
-                  onImport={handleImportData}
-                />
+                <SettingsView currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} availableThemes={AVAILABLE_THEMES} assets={assets} transactions={transactions} onImport={handleImportData} />
               </div>
             )}
-
           </div>
         </main>
-        
-        <div className="md:hidden">
-          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-        </div>
-        
+        <div className="md:hidden"><BottomNav activeTab={activeTab} setActiveTab={setActiveTab} /></div>
         <AIAdvisor summary={summaryData} portfolio={portfolioData} />
-
-        {isAddModalOpen && (
-          <AddTransactionModal 
-            onClose={() => setIsAddModalOpen(false)} 
-            onSave={handleSaveTransaction} 
-            onDelete={handleDeleteTransaction}
-            initialTransaction={transactionToEdit}
-          />
-        )}
-
+        {isAddModalOpen && <AddTransactionModal onClose={() => setIsAddModalOpen(false)} onSave={handleSaveTransaction} onDelete={handleDeleteTransaction} initialTransaction={transactionToEdit} />}
         <Suspense fallback={null}>
             {selectedAsset && <AssetDetailModal asset={selectedAsset} transactions={transactions} onClose={() => setSelectedAsset(null)} />}
             {modalOpen === 'realPower' && <RealPowerModal onClose={() => setModalOpen(null)} />}

@@ -8,15 +8,12 @@ export const getFinancialAdvice = async (
   portfolio: PortfolioItem[]
 ): Promise<string> => {
   try {
-    // Check for API key presence to avoid internal ReferenceErrors
-    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
-    
-    if (!apiKey) {
-      console.warn("[Gemini Advisor] API_KEY não configurada.");
-      return "O serviço de IA não está configurado. Por favor, adicione sua API_KEY às variáveis de ambiente.";
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
+    /**
+     * Always use const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
+     * The API key must be obtained exclusively from the environment variable process.env.API_KEY. 
+     * Assume this variable is pre-configured, valid, and accessible.
+     */
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const systemInstruction = `
       Você é um consultor financeiro sênior especializado no mercado brasileiro (B3).
@@ -29,8 +26,12 @@ export const getFinancialAdvice = async (
       - Composição: ${portfolio.map(p => `${p.name} (${p.percentage}%)`).join(', ')}
     `;
 
+    /**
+     * Using 'gemini-3-pro-preview' for complex financial reasoning and portfolio analysis.
+     * You must use ai.models.generateContent to query GenAI with both the model name and prompt.
+     */
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: query,
       config: {
         systemInstruction,
@@ -39,6 +40,10 @@ export const getFinancialAdvice = async (
       }
     });
 
+    /**
+     * The GenerateContentResponse object features a text property (not a method) 
+     * that directly returns the string output.
+     */
     return response.text || "Desculpe, não consegui processar sua análise agora.";
   } catch (error) {
     console.error("[Gemini Advisor] Erro de conexão:", error);

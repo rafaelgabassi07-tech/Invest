@@ -9,11 +9,6 @@ import {
   BarChart, Bar, Tooltip, ResponsiveContainer, XAxis, CartesianGrid, ReferenceLine
 } from 'recharts';
 
-interface TransactionsViewProps {
-  transactions: Transaction[];
-  onEditTransaction?: (transaction: Transaction) => void;
-}
-
 const parseDate = (dateStr: string) => {
   const months: { [key: string]: number } = {
     'Jan': 0, 'Fev': 1, 'Mar': 2, 'Abr': 3, 'Mai': 4, 'Jun': 5,
@@ -26,6 +21,12 @@ const parseDate = (dateStr: string) => {
   const year = parseInt(parts[2]);
   return new Date(year, month, day);
 };
+
+// Define the interface for TransactionsView component props
+interface TransactionsViewProps {
+  transactions: Transaction[];
+  onEditTransaction: (transaction: Transaction) => void;
+}
 
 export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions, onEditTransaction }) => {
   const [filterType, setFilterType] = useState<'all' | 'Compra' | 'Venda'>('all');
@@ -43,6 +44,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
   const stats = useMemo(() => {
     const buy = transactions.filter(t => t.type === 'Compra').reduce((acc, t) => acc + t.total, 0);
     const sell = transactions.filter(t => t.type === 'Venda').reduce((acc, t) => acc + t.total, 0);
+    // Investimento Líquido: O que de fato saiu do bolso (Compras - Vendas)
     return { buy, sell, net: buy - sell };
   }, [transactions]);
 
@@ -55,7 +57,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
         const key = `${parts[1]}`; // Month name
         if (!grouped[key]) grouped[key] = { month: key, buy: 0, sell: 0 };
         if (t.type === 'Compra') grouped[key].buy += t.total;
-        if (t.type === 'Venda') grouped[key].sell -= t.total; // Negative for visualization
+        if (t.type === 'Venda') grouped[key].sell += t.total; // Agora positivo para visualização side-by-side
     });
     return Object.values(grouped).slice(-6);
   }, [transactions]);
@@ -94,7 +96,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
          <div className="bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-xl relative overflow-hidden">
              <div className="flex justify-between items-center mb-6">
                 <div>
-                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest leading-none mb-2">Investimento Líquido</p>
+                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest leading-none mb-2">Aporte Líquido</p>
                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
                         R$ {stats.net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </h2>
@@ -107,14 +109,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
              <div className="flex items-center gap-6">
                  <div>
                      <div className="flex items-center gap-1.5 mb-1">
-                         <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                         <div className="w-2 h-2 rounded-full bg-rose-500"></div>
                          <span className="text-[10px] font-bold text-gray-500 uppercase">Compras</span>
                      </div>
                      <span className="text-sm font-bold text-gray-900 dark:text-white">R$ {stats.buy.toLocaleString('pt-BR', { notation: 'compact' })}</span>
                  </div>
                  <div>
                      <div className="flex items-center gap-1.5 mb-1">
-                         <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                         <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
                          <span className="text-[10px] font-bold text-gray-500 uppercase">Vendas</span>
                      </div>
                      <span className="text-sm font-bold text-gray-900 dark:text-white">R$ {stats.sell.toLocaleString('pt-BR', { notation: 'compact' })}</span>
@@ -124,14 +126,13 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
              {/* Mini Bar Chart inside card */}
              <div className="h-24 w-full mt-4 opacity-90">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} barGap={2}>
-                         <ReferenceLine y={0} stroke="#88888840" />
-                         <Bar dataKey="buy" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                         <Bar dataKey="sell" fill="#f43f5e" radius={[0, 0, 4, 4]} maxBarSize={40} />
+                    <BarChart data={chartData} barGap={4}>
+                         <Bar dataKey="buy" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                         <Bar dataKey="sell" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
                          <Tooltip 
                             cursor={{fill: 'transparent'}}
                             contentStyle={{ backgroundColor: '#1c1c1e', borderRadius: '8px', border: 'none', fontSize: '10px' }}
-                            formatter={(value: number) => [`R$ ${Math.abs(value).toLocaleString('pt-BR')}`, value > 0 ? 'Compras' : 'Vendas']}
+                            formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Volume']}
                          />
                     </BarChart>
                 </ResponsiveContainer>
@@ -197,16 +198,16 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                             style={{ animationDelay: `${idx * 30}ms` }}
                         >
                             {/* Type Indicator Line */}
-                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${t.type === 'Compra' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${t.type === 'Venda' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
                             <div className="flex justify-between items-center pl-3">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${
-                                        t.type === 'Compra' 
+                                        t.type === 'Venda' 
                                         ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
                                         : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
                                     }`}>
-                                        {t.type === 'Compra' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+                                        {t.type === 'Venda' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
@@ -220,8 +221,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                                 </div>
                                 
                                 <div className="text-right">
-                                    <p className={`font-black text-sm tabular-nums ${t.type === 'Compra' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                        {t.type === 'Compra' ? '+' : '-'} R$ {t.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    <p className={`font-black text-sm tabular-nums ${t.type === 'Venda' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {t.type === 'Venda' ? '+' : '-'} R$ {t.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </p>
                                     <div className="flex items-center justify-end gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <span className="text-[9px] text-brand-500 font-bold uppercase">Editar</span>
