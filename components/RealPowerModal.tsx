@@ -1,20 +1,44 @@
 
-import React from 'react';
-import { ChevronLeft, ShieldCheck, TrendingUp, AlertCircle, BarChart3, X } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { ChevronLeft, AlertCircle, BarChart3, X, TrendingUp, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface RealPowerModalProps {
   onClose: () => void;
 }
 
-// Sem dados iniciais
-const historyData: any[] = [];
-
 export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
-  const accumulatedNominal = 0;
-  const accumulatedInflation = 0;
-  const accumulatedReal = 0;
-  const hasData = historyData.length > 0;
+  // Simulação de dados para funcionalidade imediata
+  // Em um app real, isso viria de uma comparação histórica do patrimônio do usuário vs índice IPCA
+  const simulationData = useMemo(() => {
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const data = [];
+      let walletValue = 100; // Base index 100
+      let inflationValue = 100; // Base index 100
+      
+      for(let i=0; i<12; i++) {
+          // Simula variação aleatória positiva da carteira (com volatilidade)
+          const walletChange = (Math.random() * 4) - 1; // -1% a +3% ao mês
+          const inflationChange = 0.3 + (Math.random() * 0.4); // 0.3% a 0.7% ao mês (IPCA aprox)
+          
+          walletValue = walletValue * (1 + (walletChange/100));
+          inflationValue = inflationValue * (1 + (inflationChange/100));
+          
+          data.push({
+              month: months[i],
+              wallet: parseFloat(walletValue.toFixed(2)),
+              inflation: parseFloat(inflationValue.toFixed(2)),
+              realGain: parseFloat((walletValue - inflationValue).toFixed(2))
+          });
+      }
+      return data;
+  }, []);
+
+  const lastPoint = simulationData[simulationData.length - 1];
+  const accumulatedReal = lastPoint.realGain;
+  const accumulatedNominal = lastPoint.wallet - 100;
+  const accumulatedInflation = lastPoint.inflation - 100;
+  const isPositive = accumulatedReal >= 0;
 
   return (
     <div className="fixed inset-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
@@ -30,9 +54,9 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
           </button>
           
           <div className="flex flex-col items-center">
-             <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Poder Real</h1>
+             <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Poder Real de Compra</h1>
              <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">
-                  Proteção contra Inflação
+                  Rentabilidade vs IPCA (Simulado)
              </p>
           </div>
           
@@ -41,7 +65,7 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
           </button>
         </div>
 
-        {/* Content - Full Screen Layout */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
             <div className="max-w-7xl mx-auto px-6 py-8 w-full">
                 
@@ -53,12 +77,14 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
                             
                             <div className="relative z-10 text-center py-10">
                                 <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Ganho Real Acumulado (12m)</p>
-                                <h2 className="text-7xl lg:text-8xl font-bold text-gray-900 dark:text-white tracking-tighter mb-6">
-                                    +{accumulatedReal.toFixed(2)}%
+                                <h2 className={`text-7xl lg:text-8xl font-bold tracking-tighter mb-6 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    {isPositive ? '+' : ''}{accumulatedReal.toFixed(2)}%
                                 </h2>
-                                <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 rounded-full">
-                                    <TrendingUp size={16} className="text-emerald-500" />
-                                    <span className="text-emerald-600 dark:text-emerald-500 font-bold text-sm">Acima da Inflação</span>
+                                <div className={`inline-flex items-center gap-2 border px-4 py-1.5 rounded-full ${isPositive ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
+                                    {isPositive ? <TrendingUp size={16} className="text-emerald-500" /> : <TrendingDown size={16} className="text-rose-500" />}
+                                    <span className={`font-bold text-sm ${isPositive ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}>
+                                        {isPositive ? 'Acima da Inflação' : 'Abaixo da Inflação'}
+                                    </span>
                                 </div>
                             </div>
 
@@ -69,19 +95,19 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
                                 </div>
                                 <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-3xl p-6 border border-gray-100 dark:border-white/5 text-center">
                                     <p className="text-gray-400 text-[10px] font-bold uppercase mb-2">Inflação (IPCA)</p>
-                                    <p className="text-rose-500 font-bold text-2xl lg:text-3xl">-{accumulatedInflation.toFixed(2)}%</p>
+                                    <p className="text-amber-500 font-bold text-2xl lg:text-3xl">-{accumulatedInflation.toFixed(2)}%</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-start gap-4 bg-amber-500/5 border border-amber-500/10 p-6 rounded-[2rem]">
-                            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                                <AlertCircle size={20} className="text-amber-500" />
+                        <div className="flex items-start gap-4 bg-brand-500/5 border border-brand-500/10 p-6 rounded-[2rem]">
+                            <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
+                                <AlertCircle size={20} className="text-brand-500" />
                             </div>
                             <div>
-                                <h4 className="text-amber-500 font-bold text-sm mb-1">Entenda o Ganho Real</h4>
+                                <h4 className="text-brand-500 font-bold text-sm mb-1">Entenda o Ganho Real</h4>
                                 <p className="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
-                                    O ganho real é o que realmente importa para o crescimento do seu patrimônio. Ele desconta a inflação (IPCA) da sua rentabilidade nominal, mostrando o aumento efetivo do seu poder de compra.
+                                    O ganho real desconta a inflação do seu retorno. Se sua carteira rende 10% e a inflação é 4%, seu ganho real é de aproximadamente 6%. É isso que aumenta seu poder de compra.
                                 </p>
                             </div>
                         </div>
@@ -92,39 +118,33 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <BarChart3 className="text-emerald-500" size={20}/>
-                                Histórico de Rentabilidade
+                                Histórico Comparativo
                             </h3>
                             <div className="flex gap-2">
-                                {['12m', '24m', 'Total'].map(range => (
-                                    <button key={range} className="px-3 py-1 text-[10px] font-bold rounded-lg bg-gray-100 dark:bg-[#2c2c2e] text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
-                                        {range}
-                                    </button>
-                                ))}
+                                <span className="text-[10px] font-bold text-gray-400">Base 100</span>
                             </div>
                         </div>
 
-                        <div className="flex-1 w-full flex items-center justify-center bg-gray-50/50 dark:bg-[#2c2c2e]/20 rounded-3xl border border-gray-100 dark:border-white/5 relative">
-                            {!hasData ? (
-                                <div className="text-center opacity-40">
-                                    <BarChart3 size={48} className="mx-auto mb-3 text-gray-500" />
-                                    <p className="text-sm font-bold text-gray-500">Dados insuficientes para o período</p>
-                                </div>
-                            ) : (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={historyData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="colorYield" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#88888820" vertical={false} />
-                                        <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} />
-                                        <Tooltip contentStyle={{ backgroundColor: '#1c1c1e', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }} />
-                                        <Area type="monotone" dataKey="yield" name="Rentabilidade" stroke="#10b981" strokeWidth={3} fill="url(#colorYield)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            )}
+                        <div className="flex-1 w-full flex items-center justify-center bg-gray-50/50 dark:bg-[#2c2c2e]/20 rounded-3xl border border-gray-100 dark:border-white/5 relative p-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={simulationData}>
+                                    <defs>
+                                        <linearGradient id="colorWallet" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0}/>
+                                        </linearGradient>
+                                        <linearGradient id="colorInf" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#88888820" vertical={false} />
+                                    <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} dy={10} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#1c1c1e', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }} />
+                                    <Area type="monotone" dataKey="wallet" name="Sua Carteira" stroke="var(--brand-primary)" strokeWidth={3} fill="url(#colorWallet)" />
+                                    <Area type="monotone" dataKey="inflation" name="Inflação" stroke="#f59e0b" strokeWidth={3} fill="url(#colorInf)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
                 </div>

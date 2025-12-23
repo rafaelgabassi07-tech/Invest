@@ -2,11 +2,11 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction } from '../types';
 import { 
-  Search, Calendar, Download, FileText, Filter, Wallet, 
+  Search, Calendar, Download, FileText, 
   ChevronRight, ArrowUpRight, ArrowDownRight, TrendingUp
 } from 'lucide-react';
 import { 
-  BarChart, Bar, Tooltip, ResponsiveContainer, XAxis, CartesianGrid, ReferenceLine
+  BarChart, Bar, Tooltip, ResponsiveContainer
 } from 'recharts';
 
 const parseDate = (dateStr: string) => {
@@ -22,7 +22,6 @@ const parseDate = (dateStr: string) => {
   return new Date(year, month, day);
 };
 
-// Define the interface for TransactionsView component props
 interface TransactionsViewProps {
   transactions: Transaction[];
   onEditTransaction: (transaction: Transaction) => void;
@@ -44,8 +43,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
   const stats = useMemo(() => {
     const buy = transactions.filter(t => t.type === 'Compra').reduce((acc, t) => acc + t.total, 0);
     const sell = transactions.filter(t => t.type === 'Venda').reduce((acc, t) => acc + t.total, 0);
-    // Investimento Líquido: O que de fato saiu do bolso (Compras - Vendas)
-    return { buy, sell, net: buy - sell };
+    // Lógica Patrimonial: Compra aumenta patrimônio (+), Venda diminui (-)
+    const netInvestment = buy - sell;
+    return { buy, sell, netInvestment };
   }, [transactions]);
 
   const chartData = useMemo(() => {
@@ -54,10 +54,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
 
     chronological.forEach(t => {
         const parts = t.date.split(' ');
-        const key = `${parts[1]}`; // Month name
+        const key = `${parts[1]}`;
         if (!grouped[key]) grouped[key] = { month: key, buy: 0, sell: 0 };
+        // Compra (Positivo visualmente no gráfico de volume)
         if (t.type === 'Compra') grouped[key].buy += t.total;
-        if (t.type === 'Venda') grouped[key].sell += t.total; // Agora positivo para visualização side-by-side
+        // Venda
+        if (t.type === 'Venda') grouped[key].sell += t.total;
     });
     return Object.values(grouped).slice(-6);
   }, [transactions]);
@@ -88,17 +90,16 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
 
   return (
     <div className="animate-fade-in pb-32">
-      
-      {/* 1. Header Cards */}
       <div className="px-6 pt-2 pb-6 space-y-4">
-         
-         {/* Net Investment Card */}
          <div className="bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-xl relative overflow-hidden">
              <div className="flex justify-between items-center mb-6">
                 <div>
-                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest leading-none mb-2">Aporte Líquido</p>
-                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-                        R$ {stats.net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp size={14} className="text-brand-500" />
+                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Investimento Líquido</p>
+                    </div>
+                    <h2 className={`text-3xl font-bold ${stats.netInvestment >= 0 ? 'text-gray-900 dark:text-white' : 'text-rose-500'}`}>
+                        R$ {stats.netInvestment.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </h2>
                 </div>
                 <button onClick={handleExport} className="w-10 h-10 rounded-full bg-white/50 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all border border-white/20 dark:border-white/5">
@@ -109,30 +110,29 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
              <div className="flex items-center gap-6">
                  <div>
                      <div className="flex items-center gap-1.5 mb-1">
-                         <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                         <span className="text-[10px] font-bold text-gray-500 uppercase">Compras</span>
+                         <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                         <span className="text-[10px] font-bold text-gray-500 uppercase">Aportes (Compras)</span>
                      </div>
-                     <span className="text-sm font-bold text-gray-900 dark:text-white">R$ {stats.buy.toLocaleString('pt-BR', { notation: 'compact' })}</span>
+                     <span className="text-sm font-bold text-emerald-500">+ R$ {stats.buy.toLocaleString('pt-BR', { notation: 'compact' })}</span>
                  </div>
                  <div>
                      <div className="flex items-center gap-1.5 mb-1">
-                         <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                         <span className="text-[10px] font-bold text-gray-500 uppercase">Vendas</span>
+                         <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                         <span className="text-[10px] font-bold text-gray-500 uppercase">Retiradas (Vendas)</span>
                      </div>
-                     <span className="text-sm font-bold text-gray-900 dark:text-white">R$ {stats.sell.toLocaleString('pt-BR', { notation: 'compact' })}</span>
+                     <span className="text-sm font-bold text-rose-500">- R$ {stats.sell.toLocaleString('pt-BR', { notation: 'compact' })}</span>
                  </div>
              </div>
 
-             {/* Mini Bar Chart inside card */}
              <div className="h-24 w-full mt-4 opacity-90">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} barGap={4}>
-                         <Bar dataKey="buy" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                         <Bar dataKey="sell" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                         <Bar dataKey="buy" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                         <Bar dataKey="sell" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={40} />
                          <Tooltip 
                             cursor={{fill: 'transparent'}}
                             contentStyle={{ backgroundColor: '#1c1c1e', borderRadius: '8px', border: 'none', fontSize: '10px' }}
-                            formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Volume']}
+                            formatter={(value: number, name: string) => [`R$ ${value.toLocaleString('pt-BR')}`, name === 'buy' ? 'Aportes' : 'Vendas']}
                          />
                     </BarChart>
                 </ResponsiveContainer>
@@ -140,7 +140,6 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
          </div>
       </div>
 
-      {/* 2. Sticky Filters */}
       <div className="sticky top-0 z-30 bg-white/80 dark:bg-[#050505]/80 backdrop-blur-xl px-6 py-3 border-b border-gray-200/50 dark:border-white/5 space-y-3">
          <div className="flex gap-2">
              <div className="relative flex-1">
@@ -153,9 +152,6 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                     className="w-full bg-gray-100 dark:bg-[#1c1c1e] text-gray-900 dark:text-white pl-9 pr-4 py-2.5 rounded-2xl border border-transparent focus:border-brand-500/30 outline-none text-xs font-bold transition-all"
                 />
              </div>
-             <button className="w-10 rounded-2xl bg-gray-100 dark:bg-[#1c1c1e] flex items-center justify-center text-gray-400">
-                 <Filter size={16} />
-             </button>
          </div>
          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {['all', 'Compra', 'Venda'].map((type) => (
@@ -168,18 +164,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                         : 'bg-transparent text-gray-500 border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'
                     }`}
                 >
-                    {type === 'all' ? 'Tudo' : type}
+                    {type === 'all' ? 'Tudo' : type === 'Compra' ? 'Entradas (+)' : 'Saídas (-)'}
                 </button>
             ))}
          </div>
       </div>
 
-      {/* 3. Transaction List */}
       <div className="px-6 mt-6 space-y-8">
          {(Object.entries(groupedList) as [string, Transaction[]][]).map(([dateGroup, items], groupIndex) => (
             <div key={dateGroup} className="animate-slide-up" style={{ animationDelay: `${groupIndex * 50}ms` }}>
-                
-                {/* Month Label */}
                 <div className="flex items-center gap-3 mb-4 sticky top-[110px] z-20 py-2 bg-white/95 dark:bg-[#050505]/95 backdrop-blur-sm">
                     <Calendar size={12} className="text-brand-500" />
                     <span className="text-gray-900 dark:text-white text-xs font-black uppercase tracking-[0.1em]">
@@ -188,7 +181,6 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                     <div className="h-px bg-gray-100 dark:bg-white/5 flex-1"></div>
                 </div>
                 
-                {/* Items */}
                 <div className="space-y-3">
                     {items.map((t, idx) => (
                         <div 
@@ -197,17 +189,18 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                             className="group cursor-pointer animate-entry relative overflow-hidden bg-white dark:bg-[#1c1c1e] p-4 rounded-2xl border border-gray-100 dark:border-white/5 transition-all hover:scale-[1.01] hover:shadow-lg active:scale-[0.99]"
                             style={{ animationDelay: `${idx * 30}ms` }}
                         >
-                            {/* Type Indicator Line */}
-                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${t.type === 'Venda' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                            {/* Linha indicadora lateral: Verde para Compra, Vermelho para Venda */}
+                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${t.type === 'Compra' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
 
                             <div className="flex justify-between items-center pl-3">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${
-                                        t.type === 'Venda' 
+                                        t.type === 'Compra' 
                                         ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
                                         : 'bg-rose-500/10 border-rose-500/20 text-rose-500'
                                     }`}>
-                                        {t.type === 'Venda' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+                                        {/* Seta para Cima em Compra (Aumento de posição), Seta para Baixo em Venda */}
+                                        {t.type === 'Compra' ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
@@ -221,8 +214,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                                 </div>
                                 
                                 <div className="text-right">
-                                    <p className={`font-black text-sm tabular-nums ${t.type === 'Venda' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                        {t.type === 'Venda' ? '+' : '-'} R$ {t.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    <p className={`font-black text-sm tabular-nums ${t.type === 'Compra' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {t.type === 'Compra' ? '+' : '-'} R$ {t.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </p>
                                     <div className="flex items-center justify-end gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <span className="text-[9px] text-brand-500 font-bold uppercase">Editar</span>
