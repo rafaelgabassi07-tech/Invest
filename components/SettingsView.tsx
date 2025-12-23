@@ -1,13 +1,10 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { 
-  User, Shield, Settings, Bell, 
-  Calculator, Book, LogOut, ChevronRight, ChevronLeft,
-  Download, Search, Check, Smartphone, Store, Lock, EyeOff, Fingerprint,
-  DollarSign, Mail, ShieldCheck, Laptop, Globe,
-  Trash2, HelpCircle, AlertTriangle, FileJson, FileSpreadsheet,
-  Coins, Database, CloudDownload, CloudUpload, AlertCircle, Activity, Server, Cpu,
-  RefreshCcw, Eye, Key, Sparkles, Code2, Heart, ExternalLink
+  User, Shield, Calculator, Book, LogOut, ChevronRight, ChevronLeft,
+  Check, Store, Globe, Trash2, HelpCircle, Database, 
+  CloudDownload, CloudUpload, AlertCircle, Activity, Server, Cpu,
+  RefreshCcw, Eye, Key, Sparkles, Code2, Heart, ExternalLink, Mail, EyeOff, ShieldCheck
 } from 'lucide-react';
 import { AppTheme, Asset, Transaction } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -89,32 +86,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
 
   const apiTelemetry = useMemo(() => {
     const logs = getApiLogs();
-    const grouped: Record<string, { date: string, brapi: number, gemini: number, total: number }> = {};
-    
-    // Criar últimos 7 dias como base
+    const grouped: Record<string, { date: string, total: number }> = {};
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      grouped[key] = { date: key, brapi: 0, gemini: 0, total: 0 };
+      grouped[key] = { date: key, total: 0 };
     }
-
     logs.forEach((log) => {
       const key = new Date(log.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      if (grouped[key]) {
-        if (log.service === 'brapi') grouped[key].brapi++;
-        if (log.service === 'gemini') grouped[key].gemini++;
-        grouped[key].total++;
-      }
+      if (grouped[key]) grouped[key].total++;
     });
-
-    const totalBrapi = logs.filter(l => l.service === 'brapi').length;
-    const totalGemini = logs.filter(l => l.service === 'gemini').length;
 
     return {
       chartData: Object.values(grouped),
-      totalBrapi,
-      totalGemini,
+      totalBrapi: logs.filter(l => l.service === 'brapi').length,
+      totalGemini: logs.filter(l => l.service === 'gemini').length,
       total: logs.length,
       last24h: logs.filter(l => l.timestamp > Date.now() - 24 * 60 * 60 * 1000).length,
       tokens: {
@@ -124,68 +111,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
     };
   }, [activeSection]);
 
+  const calculateCompoundInterest = () => {
+    const r = calcRate / 100 / 12;
+    const n = calcYears * 12;
+    if (r === 0) return { total: calcInitial + (calcMonthly * n) };
+    const futureValue = (calcInitial * Math.pow(1 + r, n)) + (calcMonthly * ((Math.pow(1 + r, n) - 1) / r));
+    return { total: futureValue };
+  };
+
+  const glossaryTerms = [
+    { term: 'Dividend Yield (DY)', def: 'Indicador que mede o rendimento de um ativo em relação ao seu preço de mercado.' },
+    { term: 'P/VP', def: 'Preço sobre Valor Patrimonial. Abaixo de 1.00 pode indicar que o ativo está descontado.' },
+    { term: 'Preço Médio', def: 'A média ponderada do valor pago por cada cota de um ativo na sua carteira.' },
+    { term: 'Vacância Física', def: 'Percentual de área de um imóvel que não está locada em um FII de tijolo.' },
+    { term: 'Yield on Cost', def: 'O rendimento de dividendos calculado sobre o preço médio pago pelo investidor.' }
+  ];
+
   const maskToken = (token: string) => {
       if (!token || token === 'N/A') return 'Indisponível';
       if (!showTokens) return token.substring(0, 3) + '••••••••' + token.substring(token.length - 3);
       return token;
   };
 
-  const calculateCompoundInterest = () => {
-    const r = calcRate / 100 / 12;
-    const n = calcYears * 12;
-    if (r === 0) return { total: calcInitial + (calcMonthly * n), invested: calcInitial + (calcMonthly * n), interest: 0 };
-    const futureValue = (calcInitial * Math.pow(1 + r, n)) + (calcMonthly * ((Math.pow(1 + r, n) - 1) / r));
-    const totalInvested = calcInitial + (calcMonthly * n);
-    return { total: futureValue, invested: totalInvested, interest: futureValue - totalInvested };
-  };
-
   const handleExportBackup = () => {
     setIsExporting(true);
-    const data = {
-        version: "2.7.0",
-        timestamp: new Date().toISOString(),
-        assets,
-        transactions
-    };
-    
+    const data = { version: "2.8.0", timestamp: new Date().toISOString(), assets, transactions };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `invest_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    
     setTimeout(() => setIsExporting(false), 1000);
-  };
-
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        try {
-            const json = JSON.parse(event.target?.result as string);
-            if (!json.assets || !Array.isArray(json.assets)) {
-                throw new Error("Arquivo inválido.");
-            }
-            if (window.confirm("Importar dados substituirá sua carteira atual. Continuar?")) {
-                onImport({ assets: json.assets, transactions: json.transactions || [] });
-                alert("Sucesso!");
-                setActiveSection(null);
-            }
-        } catch (err) {
-            alert("Erro ao importar.");
-        }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
   };
 
   const renderContent = () => {
@@ -204,11 +161,29 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                     </div>
                 </div>
                 <div className="p-4 bg-brand-highlight/20 rounded-2xl border border-white/10">
-                    <label className="text-[10px] font-bold uppercase text-gray-500">Nome</label>
-                    <p className="text-sm font-bold">Investidor Anônimo</p>
+                    <label className="text-[10px] font-bold uppercase text-gray-500">Perfil de Investidor</label>
+                    <p className="text-sm font-bold">Estrategista Pro</p>
                 </div>
             </div>
           </div>
+        );
+      case 'security':
+        return (
+            <div className="animate-slide-up pb-10">
+                <SubPageHeader title="Segurança" onBack={() => setActiveSection(null)} />
+                <div className="px-4 mt-6 space-y-4">
+                    <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 shadow-lg">
+                        <div className="p-5 flex justify-between items-center border-b border-white/5">
+                            <div><span className="text-sm font-bold block">Biometria</span><p className="text-[10px] text-gray-500">Solicitar ao abrir o app</p></div>
+                            <ToggleSwitch checked={biometrics} onChange={setBiometrics} />
+                        </div>
+                        <div className="p-5 flex justify-between items-center">
+                            <div><span className="text-sm font-bold block">Modo Privacidade</span><p className="text-[10px] text-gray-500">Ocultar valores por padrão</p></div>
+                            <ToggleSwitch checked={hideValues} onChange={setHideValues} />
+                        </div>
+                    </div>
+                </div>
+            </div>
         );
       case 'api_connections':
         return (
@@ -219,116 +194,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                 </button>
             } />
             <div className="px-4 mt-6 space-y-6">
-              
-              {/* Token Display */}
               <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-6 rounded-[2rem] border border-white/5 shadow-xl">
                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Key size={18} className="text-brand-500" /> Identificadores
-                    </h3>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2"><Key size={18} className="text-brand-500" /> Identificadores</h3>
                     <button onClick={() => setShowTokens(!showTokens)} className="flex items-center gap-1.5 text-[10px] font-bold text-brand-500 bg-brand-500/10 px-2 py-1 rounded-lg">
                         {showTokens ? <EyeOff size={12} /> : <Eye size={12} />} {showTokens ? 'Esconder' : 'Ver'}
                     </button>
                  </div>
                  <div className="space-y-4">
                     <div className="flex flex-col gap-1">
-                        <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Token BRAPI</span>
-                        <div className="p-3 bg-black/10 dark:bg-white/5 rounded-xl border border-white/5 font-mono text-xs break-all">
-                            {maskToken(apiTelemetry.tokens.brapi)}
-                        </div>
+                        <span className="text-[9px] font-bold text-gray-500 uppercase">Token BRAPI</span>
+                        <div className="p-3 bg-black/10 dark:bg-white/5 rounded-xl border border-white/5 font-mono text-xs break-all">{maskToken(apiTelemetry.tokens.brapi)}</div>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">API Key Gemini</span>
-                        <div className="p-3 bg-black/10 dark:bg-white/5 rounded-xl border border-white/5 font-mono text-xs break-all">
-                            {maskToken(apiTelemetry.tokens.gemini)}
-                        </div>
+                        <span className="text-[9px] font-bold text-gray-500 uppercase">API Key Gemini</span>
+                        <div className="p-3 bg-black/10 dark:bg-white/5 rounded-xl border border-white/5 font-mono text-xs break-all">{maskToken(apiTelemetry.tokens.gemini)}</div>
                     </div>
                  </div>
               </div>
-
-              {/* Status Cards */}
               <div className="grid grid-cols-2 gap-4">
                  <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-5 rounded-3xl border border-white/5 shadow-md flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                       <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/10">
-                          <Server size={20} />
-                       </div>
-                       <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                       </span>
-                    </div>
-                    <div>
-                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">BRAPI ({apiTelemetry.totalBrapi})</h4>
-                       <p className="text-sm font-black text-gray-900 dark:text-white">Conectado</p>
-                    </div>
+                    <div className="flex justify-between items-center"><Server size={20} className="text-blue-500" /><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span></div>
+                    <div><h4 className="text-[10px] font-bold text-gray-400 uppercase">BRAPI ({apiTelemetry.totalBrapi})</h4><p className="text-sm font-black">Ativo</p></div>
                  </div>
                  <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-5 rounded-3xl border border-white/5 shadow-md flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                       <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500 border border-brand-500/10">
-                          <Cpu size={20} />
-                       </div>
-                       <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                       </span>
-                    </div>
-                    <div>
-                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">GEMINI ({apiTelemetry.totalGemini})</h4>
-                       <p className="text-sm font-black text-gray-900 dark:text-white">Conectado</p>
-                    </div>
-                 </div>
-              </div>
-
-              {/* Stats Row */}
-              <div className="grid grid-cols-3 gap-3">
-                 <div className="bg-white/40 dark:bg-[#1c1c1e]/40 p-4 rounded-2xl border border-white/5 text-center">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase">Total (30d)</span>
-                    <p className="text-lg font-black text-gray-900 dark:text-white">{apiTelemetry.total}</p>
-                 </div>
-                 <div className="bg-white/40 dark:bg-[#1c1c1e]/40 p-4 rounded-2xl border border-white/5 text-center">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase">Últimas 24h</span>
-                    <p className="text-lg font-black text-emerald-500">{apiTelemetry.last24h}</p>
-                 </div>
-                 <div className="bg-white/40 dark:bg-[#1c1c1e]/40 p-4 rounded-2xl border border-white/5 text-center">
-                    <span className="text-[9px] font-bold text-gray-500 uppercase">Média Diária</span>
-                    <p className="text-lg font-black text-gray-900 dark:text-white">{(apiTelemetry.total / 7).toFixed(1)}</p>
-                 </div>
-              </div>
-
-              {/* Usage Chart */}
-              <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2.5rem] p-6 border border-white/5 shadow-xl">
-                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                    <Activity size={18} className="text-brand-500" />
-                    Fluxo de Telemetria (7 dias)
-                 </h3>
-                 <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                       <AreaChart data={apiTelemetry.chartData}>
-                          <defs>
-                             <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0}/>
-                             </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" vertical={false} />
-                          <XAxis dataKey="date" tick={{fontSize: 10, fill: '#888'}} axisLine={false} tickLine={false} />
-                          <YAxis hide domain={[0, 'auto']} />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1c1c1e', border: 'none', borderRadius: '12px', fontSize: '10px', color: '#fff' }}
-                            itemStyle={{ fontWeight: 'bold' }}
-                          />
-                          <Area 
-                             type="monotone" 
-                             dataKey="total" 
-                             name="Chamadas" 
-                             stroke="var(--brand-primary)" 
-                             strokeWidth={3} 
-                             fill="url(#colorTotal)" 
-                             animationDuration={1500}
-                          />
-                       </AreaChart>
-                    </ResponsiveContainer>
+                    <div className="flex justify-between items-center"><Cpu size={20} className="text-brand-500" /><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span></div>
+                    <div><h4 className="text-[10px] font-bold text-gray-400 uppercase">GEMINI ({apiTelemetry.totalGemini})</h4><p className="text-sm font-black">Ativo</p></div>
                  </div>
               </div>
             </div>
@@ -339,92 +230,132 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
             <div className="animate-slide-up pb-10">
                 <SubPageHeader title="Backup & Dados" onBack={() => setActiveSection(null)} />
                 <div className="px-4 mt-6 space-y-6">
-                    <SettingsItem icon={CloudDownload} title="Exportar Backup" subtitle="Salvar dados localmente" onClick={handleExportBackup} rightElement={isExporting ? <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"/> : null} />
-                    <SettingsItem icon={CloudUpload} title="Importar Backup" subtitle="Restaurar de arquivo JSON" onClick={handleImportClick} />
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+                    <div className="bg-amber-500/5 border border-amber-500/10 p-4 rounded-2xl flex gap-3">
+                        <AlertCircle className="text-amber-500 shrink-0" size={18} />
+                        <p className="text-[10px] text-gray-500 font-medium leading-relaxed">Seus dados são locais. Exporte backup regularmente para evitar perdas.</p>
+                    </div>
+                    <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 shadow-lg">
+                        <SettingsItem icon={CloudDownload} title="Exportar Backup" subtitle="Salvar dados localmente" onClick={handleExportBackup} rightElement={isExporting ? <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"/> : null} />
+                        <SettingsItem icon={CloudUpload} title="Importar Backup" subtitle="Restaurar de arquivo JSON" onClick={() => fileInputRef.current?.click()} />
+                        <input type="file" ref={fileInputRef} onChange={(e) => {
+                             const file = e.target.files?.[0];
+                             if(!file) return;
+                             const reader = new FileReader();
+                             reader.onload = (ev) => {
+                                 try {
+                                     const json = JSON.parse(ev.target?.result as string);
+                                     onImport({ assets: json.assets, transactions: json.transactions || [] });
+                                     alert("Dados importados!");
+                                     setActiveSection(null);
+                                 } catch(e) { alert("Erro ao importar."); }
+                             };
+                             reader.readAsText(file);
+                        }} accept=".json" className="hidden" />
+                        <SettingsItem icon={Trash2} title="Limpar Tudo" subtitle="Apagar permanentemente" onClick={() => {
+                            if(window.confirm("Isso apagará TUDO. Continuar?")) { localStorage.clear(); window.location.reload(); }
+                        }} destructive hasBorder={false} />
+                    </div>
                 </div>
             </div>
         );
+      case 'theme_store':
+        return (
+           <div className="animate-slide-up pb-10">
+            <SubPageHeader title="Loja de Temas" onBack={() => setActiveSection(null)} />
+            <div className="px-4 mt-6">
+                <div className="grid grid-cols-2 gap-5 pb-20">
+                {availableThemes.map((theme) => {
+                    const isActive = currentTheme.id === theme.id;
+                    return (
+                        <div key={theme.id} onClick={() => setCurrentTheme(theme)} className={`relative overflow-hidden rounded-[2.5rem] border-2 transition-all cursor-pointer hover:scale-[1.03] ${isActive ? 'border-brand-500 shadow-xl' : 'border-transparent bg-white/60 dark:bg-[#1c1c1e]/60'}`}>
+                            <div className="h-44 w-full p-4 flex justify-center items-center" style={{ background: theme.preview }}>
+                                <div className="w-24 h-36 rounded-2xl bg-black/20 backdrop-blur-md border border-white/20"></div>
+                            </div>
+                            <div className="p-4 bg-white/90 dark:bg-black/40 border-t border-white/10 flex justify-between items-center">
+                                <h4 className="text-[11px] font-bold truncate">{theme.name}</h4>
+                                {isActive && <Check size={12} className="text-brand-500" />}
+                            </div>
+                        </div>
+                    );
+                })}
+                </div>
+            </div>
+           </div>
+        );
+      case 'calculators':
+        return (
+           <div className="animate-slide-up pb-10">
+              <SubPageHeader title="Calculadoras" onBack={() => setActiveSection(null)} />
+              <div className="px-4 mt-6">
+                <div className="bg-brand-muted p-8 rounded-[2.5rem] border border-brand-500/20 mb-8 text-center shadow-xl">
+                    <p className="text-gray-400 text-[10px] font-bold uppercase mb-2">Montante Estimado</p>
+                    <h2 className="text-4xl font-bold text-white">R$ {calculateCompoundInterest().total.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}</h2>
+                </div>
+                <div className="space-y-6 px-2">
+                    <div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase text-gray-500 mb-2"><span>Valor Inicial</span><span>R$ {calcInitial}</span></div>
+                        <input type="range" min="0" max="50000" step="500" value={calcInitial} onChange={e => setCalcInitial(Number(e.target.value))} className="w-full accent-brand-500" />
+                    </div>
+                    <div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase text-gray-500 mb-2"><span>Aporte Mensal</span><span>R$ {calcMonthly}</span></div>
+                        <input type="range" min="0" max="10000" step="100" value={calcMonthly} onChange={e => setCalcMonthly(Number(e.target.value))} className="w-full accent-brand-500" />
+                    </div>
+                    <div>
+                        <div className="flex justify-between text-[10px] font-bold uppercase text-gray-500 mb-2"><span>Tempo</span><span>{calcYears} Anos</span></div>
+                        <input type="range" min="1" max="50" step="1" value={calcYears} onChange={e => setCalcYears(Number(e.target.value))} className="w-full accent-brand-500" />
+                    </div>
+                </div>
+              </div>
+           </div>
+        );
+      case 'glossary':
+         return (
+            <div className="animate-slide-up pb-10">
+               <SubPageHeader title="Glossário" onBack={() => setActiveSection(null)} />
+               <div className="px-4 space-y-3 mt-4 overflow-y-auto max-h-[70vh] custom-scrollbar">
+                    {glossaryTerms.map((item, idx) => (
+                        <div key={idx} className="bg-white/60 dark:bg-[#1c1c1e]/60 p-5 rounded-[1.5rem] border border-white/5">
+                            <h4 className="text-brand-500 font-bold text-sm mb-1.5">{item.term}</h4>
+                            <p className="text-gray-500 text-xs font-medium">{item.def}</p>
+                        </div>
+                    ))}
+               </div>
+            </div>
+         );
       case 'about':
         return (
           <div className="animate-slide-up pb-10">
             <SubPageHeader title="Sobre o Invest" onBack={() => setActiveSection(null)} />
             <div className="px-4 mt-8 flex flex-col items-center">
-              
-              {/* App Identity */}
               <div className="relative mb-6">
                 <div className="absolute inset-0 bg-brand-500/20 blur-[30px] rounded-full animate-pulse"></div>
                 <div className="w-24 h-24 bg-gradient-to-br from-brand-500 to-brand-secondary rounded-[2rem] flex items-center justify-center shadow-xl relative z-10">
                   <Activity size={48} className="text-white" />
                 </div>
               </div>
-              
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">Invest Dashboard</h3>
-              <p className="text-brand-500 font-bold text-xs uppercase tracking-widest mb-8">Versão 2.7.0</p>
-              
+              <h3 className="text-2xl font-black tracking-tighter">Invest Dashboard</h3>
+              <p className="text-brand-500 font-bold text-xs uppercase tracking-widest mb-8">Versão 2.8.0</p>
               <div className="w-full space-y-6">
-                
-                {/* Description Card */}
                 <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-6 rounded-[2rem] border border-white/5 shadow-lg">
-                  <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                    <Sparkles size={16} className="text-brand-500" /> Nossa Missão
-                  </h4>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
-                    O Invest foi criado para proporcionar soberania financeira. Nossa ferramenta permite que investidores brasileiros gerenciem suas carteiras de Ações e FIIs com alta fidelidade visual e inteligência analítica, mantendo 100% da privacidade dos dados.
-                  </p>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><Sparkles size={16} className="text-brand-500" /> Nossa Missão</h4>
+                  <p className="text-xs text-gray-500 leading-relaxed font-medium">O Invest proporciona soberania financeira através de uma interface de alta fidelidade e análise inteligente, mantendo 100% da privacidade dos dados locais.</p>
                 </div>
-
-                {/* Tech Stack */}
                 <div className="space-y-3">
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-4">Tecnologias Utilizadas</h4>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-4">Stack Tecnológica</h4>
                   <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/5">
-                    <div className="p-4 flex items-center gap-4 border-b border-white/5">
-                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500"><Code2 size={20}/></div>
-                      <div><p className="text-xs font-bold text-gray-900 dark:text-white">React 19 & Tailwind</p><p className="text-[9px] text-gray-500 font-bold uppercase">Interface de Alta Fidelidade</p></div>
-                    </div>
-                    <div className="p-4 flex items-center gap-4 border-b border-white/5">
-                      <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500"><Sparkles size={20}/></div>
-                      <div><p className="text-xs font-bold text-gray-900 dark:text-white">Gemini 3 AI</p><p className="text-[9px] text-gray-500 font-bold uppercase">Consultoria Financeira Cognitiva</p></div>
-                    </div>
-                    <div className="p-4 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500"><Globe size={20}/></div>
-                      <div><p className="text-xs font-bold text-gray-900 dark:text-white">BRAPI Service</p><p className="text-[9px] text-gray-500 font-bold uppercase">Cotações em Tempo Real (B3)</p></div>
-                    </div>
+                    <div className="p-4 flex items-center gap-4 border-b border-white/5"><div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500"><Code2 size={20}/></div><div><p className="text-xs font-bold">React 19 & Tailwind</p><p className="text-[9px] text-gray-500 font-bold uppercase">Interface UI/UX</p></div></div>
+                    <div className="p-4 flex items-center gap-4 border-b border-white/5"><div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500"><Sparkles size={20}/></div><div><p className="text-xs font-bold">Gemini 3 AI</p><p className="text-[9px] text-gray-500 font-bold uppercase">Consultoria Financeira</p></div></div>
+                    <div className="p-4 flex items-center gap-4"><div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500"><Globe size={20}/></div><div><p className="text-xs font-bold">BRAPI Service</p><p className="text-[9px] text-gray-500 font-bold uppercase">Cotações B3</p></div></div>
                   </div>
                 </div>
-
-                {/* Privacy Commitment */}
                 <div className="bg-brand-500/5 border border-brand-500/10 p-6 rounded-[2rem] flex gap-4">
-                   <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
-                      <ShieldCheck size={20} className="text-brand-500" />
-                   </div>
-                   <div>
-                      <h5 className="text-xs font-bold text-brand-500 mb-1">Privacidade "Local First"</h5>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
-                        Seus dados financeiros nunca saem deste dispositivo. Não possuímos banco de dados centralizado. Tudo o que você vê é armazenado criptograficamente no seu navegador.
-                      </p>
-                   </div>
+                   <ShieldCheck size={20} className="text-brand-500 shrink-0" />
+                   <div><h5 className="text-xs font-bold text-brand-500 mb-1">Privacidade Local-First</h5><p className="text-[10px] text-gray-500 font-medium">Seus dados nunca saem deste dispositivo. Não possuímos banco de dados centralizado.</p></div>
                 </div>
-
                 <div className="flex gap-4">
-                  <button className="flex-1 py-4 bg-white/60 dark:bg-[#2c2c2e]/60 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 border border-white/5">
-                    <Mail size={16}/> Suporte
-                  </button>
-                  <button className="flex-1 py-4 bg-white/60 dark:bg-[#2c2c2e]/60 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 border border-white/5">
-                    <ExternalLink size={16}/> Doc. API
-                  </button>
+                  <button className="flex-1 py-4 bg-white/60 dark:bg-[#2c2c2e]/60 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 border border-white/5"><Mail size={16}/> Suporte</button>
+                  <button className="flex-1 py-4 bg-white/60 dark:bg-[#2c2c2e]/60 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 border border-white/5"><ExternalLink size={16}/> Doc. API</button>
                 </div>
-
-                <div className="pt-6 flex flex-col items-center gap-4">
-                  <p className="text-[10px] text-gray-500 font-bold flex items-center gap-1.5">
-                    Desenvolvido com <Heart size={10} className="text-rose-500 fill-rose-500" /> para investidores.
-                  </p>
-                  <button onClick={() => window.location.reload()} className="text-gray-400 hover:text-brand-500 flex items-center gap-2 transition-colors">
-                    <RefreshCcw size={14}/>
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Reiniciar Aplicação</span>
-                  </button>
-                </div>
-
               </div>
             </div>
           </div>
@@ -437,17 +368,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
 
   return (
     <div className="px-4 pb-32 animate-fade-in">
-      <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2 mt-4 ml-1">Sistema</h3>
+      <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2 mt-4 ml-1">Conta & Dados</h3>
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-8 shadow-lg">
-        <SettingsItem icon={Globe} title="Conexões API" subtitle="Telemetria e Tokens" onClick={() => setActiveSection('api_connections')} />
-        <SettingsItem icon={Database} title="Backup & Dados" subtitle="Versionamento Local" onClick={() => setActiveSection('backup')} hasBorder={false} />
+        <SettingsItem icon={User} title="Meu Perfil" subtitle="Investidor Pro" onClick={() => setActiveSection('profile')} />
+        <SettingsItem icon={Shield} title="Segurança" subtitle="Proteção e Privacidade" onClick={() => setActiveSection('security')} />
+        <SettingsItem icon={Globe} title="Conexões API" subtitle="Telemetria e Status" onClick={() => setActiveSection('api_connections')} />
+        <SettingsItem icon={Database} title="Backup & Dados" subtitle="Importar e Exportar" onClick={() => setActiveSection('backup')} hasBorder={false} />
       </div>
 
+      <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2 ml-1">Experiência</h3>
+      <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-8 shadow-lg">
+        <SettingsItem icon={Store} title="Loja de Temas" subtitle={`Ativo: ${currentTheme.name}`} onClick={() => setActiveSection('theme_store')} />
+        <SettingsItem icon={Calculator} title="Calculadoras" subtitle="Simular Juros Compostos" onClick={() => setActiveSection('calculators')} hasBorder={false} />
+      </div>
+
+      <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2 ml-1">Suporte</h3>
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-10 shadow-lg">
-        <SettingsItem icon={HelpCircle} title="Sobre o App" subtitle="Informações & Tech" onClick={() => setActiveSection('about')} hasBorder={false} />
+        <SettingsItem icon={Book} title="Glossário" subtitle="Termos do Mercado" onClick={() => setActiveSection('glossary')} />
+        <SettingsItem icon={HelpCircle} title="Sobre o App" subtitle="Versão 2.8.0" onClick={() => setActiveSection('about')} hasBorder={false} />
       </div>
 
-      <button onClick={() => window.location.reload()} className="w-full py-4 flex items-center justify-center gap-2 text-rose-500 opacity-80">
+      <button onClick={() => window.location.reload()} className="w-full py-4 flex items-center justify-center gap-2 text-rose-500 opacity-80 hover:opacity-100 transition-all">
         <LogOut size={18} />
         <span className="text-sm font-bold uppercase tracking-wider">Sair da Sessão</span>
       </button>
