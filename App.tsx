@@ -36,7 +36,10 @@ const App: React.FC = () => {
   const [previousTab, setPreviousTab] = useState('dashboard'); 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [modalOpen, setModalOpen] = useState<string | null>(null);
+  
+  // State for Add/Edit Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   
   const [assets, setAssets] = useState<Asset[]>(() => {
     try {
@@ -110,104 +113,127 @@ const App: React.FC = () => {
     setTimeout(() => refreshMarketData(), 500);
   }, [refreshMarketData]);
 
+  // --- LOGIC CORE: Transaction Management ---
+  
+  // Função auxiliar para recalcular um ativo específico do zero baseando-se no histórico
+  const recalculateAssetFromHistory = (ticker: string, allTransactions: Transaction[], currentAssets: Asset[]) => {
+    // 1. Filtrar transações apenas deste ativo
+    const assetTransactions = allTransactions.filter(t => t.ticker === ticker);
+
+    // 2. Ordenar cronologicamente (Antigo -> Novo) para o cálculo do PM fazer sentido
+    assetTransactions.sort((a, b) => {
+        const parseDate = (d: string) => {
+            const months: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
+            const p = d.split(' ');
+            if (p.length < 3) return 0;
+            return new Date(parseInt(p[2]), months[p[1]] || 0, parseInt(p[0])).getTime();
+        };
+        return parseDate(a.date) - parseDate(b.date);
+    });
+
+    // 3. Replay do histórico
+    let quantity = 0;
+    let totalCost = 0; // Custo de Aquisição Total
+
+    for (const t of assetTransactions) {
+        if (t.type === 'Compra') {
+            // Compra aumenta quantidade e custo
+            quantity += t.quantity;
+            totalCost += t.total; 
+        } else if (t.type === 'Venda') {
+            // Venda reduz quantidade
+            // O custo total reduz PROPORCIONALMENTE ao preço médio atual
+            // PM não muda na venda (Regra Contábil)
+            const currentAvgPrice = quantity > 0 ? totalCost / quantity : 0;
+            const qtySold = Math.min(quantity, t.quantity); // Não vender mais que tem
+            
+            quantity -= qtySold;
+            totalCost -= (qtySold * currentAvgPrice);
+        }
+    }
+
+    // 4. Atualizar o estado dos Ativos
+    const existingAsset = currentAssets.find(a => a.ticker === ticker);
+    const lastTransPrice = assetTransactions.length > 0 ? assetTransactions[assetTransactions.length - 1].price : 0;
+
+    // Se a quantidade for zero (ou negativa por erro), removemos o ativo da carteira
+    if (quantity <= 0.0001) {
+        return currentAssets.filter(a => a.ticker !== ticker);
+    }
+
+    const avgPrice = quantity > 0 ? totalCost / quantity : 0;
+    const currentPrice = existingAsset ? existingAsset.currentPrice : lastTransPrice;
+
+    const updatedAsset: Asset = {
+        ...(existingAsset || {
+            id: ticker,
+            ticker: ticker,
+            shortName: ticker.substring(0, 4),
+            companyName: ticker, // Será atualizado pela API depois
+            assetType: ticker.endsWith('11') || ticker.endsWith('34') || ticker.endsWith('39') ? 'FII' : 'Ação',
+            dailyChange: 0,
+            lastDividend: 0,
+            lastDividendDate: '',
+            dy12m: 0,
+            color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
+            pvp: 1,
+            vp: 0,
+            liquidity: 'N/A',
+            netWorth: 'N/A',
+            segment: 'Outros',
+            allocationType: 'Outros'
+        }),
+        quantity: Number(quantity.toFixed(8)), // Evitar problemas de float precision
+        totalCost: totalCost,
+        averagePrice: avgPrice,
+        currentPrice: currentPrice,
+        totalValue: quantity * currentPrice
+    };
+
+    if (existingAsset) {
+        return currentAssets.map(a => a.ticker === ticker ? updatedAsset : a);
+    } else {
+        return [updatedAsset, ...currentAssets];
+    }
+  };
+
   const handleSaveTransaction = useCallback((newTransaction: Transaction) => {
-    // 1. Atualizar lista de Transações (Trata duplicatas de ID para edições)
+    // 1. Atualizar lista de Transações
     let updatedTransactions: Transaction[] = [];
     
     setTransactions(prev => {
         const exists = prev.some(t => t.id === newTransaction.id);
         if (exists) {
-            // Edição: Substitui o existente
+            // Edição
             updatedTransactions = prev.map(t => t.id === newTransaction.id ? newTransaction : t);
         } else {
-            // Novo: Adiciona no topo
+            // Novo
             updatedTransactions = [newTransaction, ...prev];
         }
         return updatedTransactions;
     });
 
-    // 2. Recalcular o Ativo específico do ZERO baseado no histórico
-    // Isso evita erros de "multiplicação" ao editar transações antigas
-    setAssets(prevAssets => {
-        const ticker = newTransaction.ticker;
-        
-        // Filtra todas as transações deste ativo e ordena por data
-        const assetTransactions = updatedTransactions
-            .filter(t => t.ticker === ticker)
-            .sort((a, b) => {
-                const parse = (d: string) => {
-                    const months: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
-                    const p = d.split(' ');
-                    // Fallback para data atual se parse falhar
-                    if (p.length < 3) return 0;
-                    return new Date(parseInt(p[2]), months[p[1]] || 0, parseInt(p[0])).getTime();
-                };
-                return parse(a.date) - parse(b.date);
-            });
+    // 2. Recalcular Ativo
+    setAssets(prevAssets => recalculateAssetFromHistory(newTransaction.ticker, updatedTransactions, prevAssets));
 
-        // Recalcula Posição e Preço Médio
-        let quantity = 0;
-        let totalCost = 0;
-
-        for (const t of assetTransactions) {
-            if (t.type === 'Compra') {
-                quantity += t.quantity;
-                totalCost += t.total;
-            } else {
-                // Venda reduz o custo proporcionalmente ao preço médio atual
-                const avgPrice = quantity > 0 ? totalCost / quantity : 0;
-                const qtySold = Math.min(quantity, t.quantity);
-                quantity -= qtySold;
-                totalCost -= (qtySold * avgPrice);
-            }
-        }
-
-        // Se quantidade zerou, remove o ativo da carteira
-        if (quantity <= 0.0001) { // margem de erro float
-            return prevAssets.filter(a => a.ticker !== ticker);
-        }
-
-        const existingAsset = prevAssets.find(a => a.ticker === ticker);
-        // Mantém preço atual se já existe, senão usa o da transação
-        const currentPrice = existingAsset ? existingAsset.currentPrice : newTransaction.price;
-        const avgPrice = quantity > 0 ? totalCost / quantity : 0;
-
-        const updatedAsset: Asset = {
-            ...(existingAsset || {
-                id: ticker,
-                ticker: ticker,
-                shortName: ticker.substring(0, 4),
-                companyName: ticker,
-                assetType: ticker.endsWith('11') || ticker.endsWith('34') || ticker.endsWith('39') ? 'FII' : 'Ação',
-                dailyChange: 0,
-                lastDividend: 0,
-                lastDividendDate: '',
-                dy12m: 0,
-                color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
-                pvp: 1,
-                vp: newTransaction.price,
-                liquidity: 'N/A',
-                netWorth: 'N/A',
-                segment: 'Outros',
-                allocationType: 'Outros'
-            }),
-            quantity: quantity,
-            totalCost: totalCost,
-            averagePrice: avgPrice,
-            currentPrice: currentPrice,
-            totalValue: quantity * currentPrice
-        };
-
-        if (existingAsset) {
-            return prevAssets.map(a => a.ticker === ticker ? updatedAsset : a);
-        } else {
-            return [updatedAsset, ...prevAssets];
-        }
-    });
-
-    // Atualiza cotação em breve
-    setTimeout(() => refreshMarketData(), 800);
+    // 3. Trigger Refresh
+    setTimeout(() => refreshMarketData(), 500);
   }, [refreshMarketData]);
+
+  const handleDeleteTransaction = useCallback((transactionId: string) => {
+    // Encontrar a transação antes de deletar para saber qual ticker recalcular
+    const transactionToDelete = transactions.find(t => t.id === transactionId);
+    if (!transactionToDelete) return;
+
+    // 1. Remover da lista
+    const updatedTransactions = transactions.filter(t => t.id !== transactionId);
+    setTransactions(updatedTransactions);
+
+    // 2. Recalcular Ativo
+    setAssets(prevAssets => recalculateAssetFromHistory(transactionToDelete.ticker, updatedTransactions, prevAssets));
+  }, [transactions]);
+
+  // --- End Logic Core ---
 
   useEffect(() => {
     if (!isAppLoading) refreshMarketData();
@@ -269,9 +295,9 @@ const App: React.FC = () => {
         <Header 
           title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
           subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
-          showBackButton={['settings'].includes(activeTab) && window.innerWidth < 768} // Show back button mostly on mobile for nested routes
+          showBackButton={['settings'].includes(activeTab) && window.innerWidth < 768} 
           showAddButton={['dashboard', 'wallet', 'transactions'].includes(activeTab)}
-          onAddClick={() => setIsAddModalOpen(true)}
+          onAddClick={() => { setTransactionToEdit(null); setIsAddModalOpen(true); }}
           onBackClick={() => setActiveTab(previousTab)}
           onSettingsClick={() => { setPreviousTab(activeTab); setActiveTab('settings'); }}
           onRefreshClick={refreshMarketData}
@@ -317,7 +343,13 @@ const App: React.FC = () => {
             
             {activeTab === 'transactions' && (
               <div className="max-w-5xl mx-auto">
-                <TransactionsView transactions={transactions} onEditTransaction={(t) => { setIsAddModalOpen(true); /* Need to pass state, handled via props usually but for now open clean */ }} />
+                <TransactionsView 
+                    transactions={transactions} 
+                    onEditTransaction={(t) => { 
+                        setTransactionToEdit(t); 
+                        setIsAddModalOpen(true); 
+                    }} 
+                />
               </div>
             )}
             
@@ -348,9 +380,8 @@ const App: React.FC = () => {
           <AddTransactionModal 
             onClose={() => setIsAddModalOpen(false)} 
             onSave={handleSaveTransaction} 
-            // In a real scenario we'd pass the editing transaction state here
-            // For now, TransactionsView sets its own state, we need to lift it or rely on context.
-            // But checking logic above, AddTransactionModal creates a NEW transaction if initial is null.
+            onDelete={handleDeleteTransaction}
+            initialTransaction={transactionToEdit}
           />
         )}
 
