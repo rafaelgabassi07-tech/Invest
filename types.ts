@@ -1,3 +1,4 @@
+
 export interface PortfolioItem {
   id: string;
   name: string;
@@ -109,7 +110,9 @@ export interface AppNotification {
   title: string;
   message: string;
   time: string;
-  type: 'money' | 'news' | 'success' | 'security';
+  type: 'money' | 'news' | 'success' | 'security' | 'system';
   read: boolean;
   group: string;
+  actionLabel?: string; // Botão de ação
+  onAction?: () => void; // Função de callback
 }

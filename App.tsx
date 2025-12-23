@@ -13,9 +13,10 @@ import { IncomeReportCard } from './components/IncomeReportCard.tsx';
 import { EvolutionCard } from './components/EvolutionCard.tsx'; 
 import { TransactionsView } from './components/TransactionsView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
+import { NotificationsView } from './components/NotificationsView.tsx'; // Ensure imported
 import { AIAdvisor } from './components/AIAdvisor.tsx';
 import { AddTransactionModal } from './components/AddTransactionModal.tsx';
-import { Asset, Transaction, AppTheme } from './types.ts';
+import { Asset, Transaction, AppTheme, AppNotification } from './types.ts';
 import { fetchTickersData } from './services/brapiService.ts';
 import { AVAILABLE_THEMES } from './services/themeService.ts';
 
@@ -37,6 +38,10 @@ const App: React.FC = () => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  
+  // Notification State
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false); // Toggle view
   
   const [assets, setAssets] = useState<Asset[]>(() => {
     try {
@@ -69,6 +74,34 @@ const App: React.FC = () => {
       return JSON.parse(saved) as AppTheme;
     } catch (e) { return AVAILABLE_THEMES[0]; }
   });
+
+  // Listen for Updates
+  useEffect(() => {
+    const handleUpdateAvailable = () => {
+        setNotifications(prev => {
+            // Avoid duplicates
+            if (prev.some(n => n.type === 'system')) return prev;
+            
+            const newNotif: AppNotification = {
+                id: 99999, // High ID to stay on top if sorted
+                title: "Atualização Disponível",
+                message: "Uma nova versão do app foi baixada. Toque para aplicar.",
+                time: "Agora",
+                type: "system",
+                read: false,
+                group: "Hoje",
+                actionLabel: "Instalar Agora",
+                onAction: () => {
+                    if (window.updateApp) window.updateApp();
+                }
+            };
+            return [newNotif, ...prev];
+        });
+    };
+
+    window.addEventListener('invest-update-available', handleUpdateAvailable);
+    return () => window.removeEventListener('invest-update-available', handleUpdateAvailable);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('invest_assets', JSON.stringify(assets));
@@ -253,39 +286,65 @@ const App: React.FC = () => {
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} currentTheme={currentTheme} />
       <div className="flex-1 flex flex-col h-screen relative z-10 w-full overflow-hidden">
         <Header 
-          title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
+          title={showNotifications ? "Notificações" : activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
           subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
-          showBackButton={['settings'].includes(activeTab) && window.innerWidth < 768} 
-          showAddButton={['dashboard', 'wallet', 'transactions'].includes(activeTab)}
+          showBackButton={(['settings'].includes(activeTab) || showNotifications) && window.innerWidth < 768} 
+          showAddButton={!showNotifications && ['dashboard', 'wallet', 'transactions'].includes(activeTab)}
+          hasUnreadNotifications={notifications.some(n => !n.read)}
           onAddClick={() => { setTransactionToEdit(null); setIsAddModalOpen(true); }}
-          onBackClick={() => setActiveTab(previousTab)}
-          onSettingsClick={() => { setPreviousTab(activeTab); setActiveTab('settings'); }}
+          onBackClick={() => {
+              if (showNotifications) {
+                  setShowNotifications(false);
+              } else {
+                  setActiveTab(previousTab);
+              }
+          }}
+          onSettingsClick={() => { 
+              setShowNotifications(false);
+              setPreviousTab(activeTab); 
+              setActiveTab('settings'); 
+          }}
+          onNotificationsClick={() => setShowNotifications(true)}
           onRefreshClick={() => refreshMarketData(true)}
         />
         <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 md:pb-6 overscroll-contain">
           <div className="w-full px-4 md:px-6 md:max-w-7xl md:mx-auto pt-4">
-            {activeTab === 'dashboard' && (
-              <div className="space-y-4 pb-4">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
-                  <div className="md:col-span-8"><SummaryCard data={summaryData} /></div>
-                  <div className="md:col-span-4"><PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} /></div>
-                  <div className="md:col-span-6 lg:col-span-3"><EvolutionCard onClick={() => setModalOpen('evolution')} /></div>
-                  <div className="md:col-span-6 lg:col-span-3"><DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} /></div>
-                  <div className="md:col-span-6 lg:col-span-3"><IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} /></div>
-                  <div className="md:col-span-6 lg:col-span-3"><InflationAnalysisCard onClick={() => setModalOpen('realPower')} /></div>
+            
+            {showNotifications ? (
+                <div className="max-w-3xl mx-auto">
+                    <NotificationsView 
+                        notifications={notifications} 
+                        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))}
+                        onNotificationClick={(id) => setNotifications(prev => prev.map(n => n.id === id ? {...n, read: true} : n))}
+                    />
                 </div>
-              </div>
+            ) : (
+                <>
+                {activeTab === 'dashboard' && (
+                <div className="space-y-4 pb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
+                    <div className="md:col-span-8"><SummaryCard data={summaryData} /></div>
+                    <div className="md:col-span-4"><PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} /></div>
+                    <div className="md:col-span-6 lg:col-span-3"><EvolutionCard onClick={() => setModalOpen('evolution')} /></div>
+                    <div className="md:col-span-6 lg:col-span-3"><DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} /></div>
+                    <div className="md:col-span-6 lg:col-span-3"><IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} /></div>
+                    <div className="md:col-span-6 lg:col-span-3"><InflationAnalysisCard onClick={() => setModalOpen('realPower')} /></div>
+                    </div>
+                </div>
+                )}
+                {activeTab === 'wallet' && <div className="max-w-5xl mx-auto"><WalletView assets={assets} onAssetClick={setSelectedAsset} /></div>}
+                {activeTab === 'transactions' && <div className="max-w-5xl mx-auto"><TransactionsView transactions={transactions} onEditTransaction={(t) => { setTransactionToEdit(t); setIsAddModalOpen(true); }} /></div>}
+                {activeTab === 'settings' && (
+                <div className="max-w-4xl mx-auto">
+                    <SettingsView currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} availableThemes={AVAILABLE_THEMES} assets={assets} transactions={transactions} onImport={handleImportData} />
+                </div>
+                )}
+                </>
             )}
-            {activeTab === 'wallet' && <div className="max-w-5xl mx-auto"><WalletView assets={assets} onAssetClick={setSelectedAsset} /></div>}
-            {activeTab === 'transactions' && <div className="max-w-5xl mx-auto"><TransactionsView transactions={transactions} onEditTransaction={(t) => { setTransactionToEdit(t); setIsAddModalOpen(true); }} /></div>}
-            {activeTab === 'settings' && (
-              <div className="max-w-4xl mx-auto">
-                <SettingsView currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} availableThemes={AVAILABLE_THEMES} assets={assets} transactions={transactions} onImport={handleImportData} />
-              </div>
-            )}
+            
           </div>
         </main>
-        <div className="md:hidden"><BottomNav activeTab={activeTab} setActiveTab={setActiveTab} /></div>
+        {!showNotifications && <div className="md:hidden"><BottomNav activeTab={activeTab} setActiveTab={setActiveTab} /></div>}
         <AIAdvisor summary={summaryData} portfolio={portfolioData} assets={assets} />
         {isAddModalOpen && <AddTransactionModal onClose={() => setIsAddModalOpen(false)} onSave={handleSaveTransaction} onDelete={handleDeleteTransaction} initialTransaction={transactionToEdit} />}
         <Suspense fallback={null}>

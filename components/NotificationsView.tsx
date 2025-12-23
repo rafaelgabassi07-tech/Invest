@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Bell, DollarSign, FileText, ShieldAlert, TrendingUp, CheckCircle2, ListFilter, SlidersHorizontal } from 'lucide-react';
+import { Bell, DollarSign, FileText, ShieldAlert, TrendingUp, CheckCircle2, ListFilter, SlidersHorizontal, ArrowDownCircle, Info } from 'lucide-react';
 import { AppNotification } from '../types';
 
 interface NotificationsViewProps {
@@ -21,6 +22,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
       case 'news': return <FileText size={20} className="text-blue-500" />;
       case 'security': return <ShieldAlert size={20} className="text-rose-500" />;
       case 'success': return <TrendingUp size={20} className="text-amber-500" />;
+      case 'system': return <ArrowDownCircle size={20} className="text-brand-500 animate-bounce" />;
       default: return <Bell size={20} className="text-gray-400" />;
     }
   };
@@ -87,17 +89,20 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                             onClick={() => onNotificationClick(notif.id)} 
                             style={{ animationDelay: `${idx * 50}ms` }}
                             className={`p-5 rounded-[1.5rem] border relative overflow-hidden transition-all duration-300 animate-entry opacity-0 fill-mode-forwards active:scale-[0.98] cursor-pointer group backdrop-blur-xl ${
-                                !notif.read 
-                                ? 'bg-white/70 dark:bg-[#1c1c1e]/70 border-brand-500/30 shadow-lg shadow-brand-500/5' 
-                                : 'bg-white/40 dark:bg-[#1c1c1e]/40 border-white/40 dark:border-white/5 opacity-80'
+                                notif.type === 'system' 
+                                ? 'bg-brand-500/10 border-brand-500/30' 
+                                : !notif.read 
+                                    ? 'bg-white/70 dark:bg-[#1c1c1e]/70 border-brand-500/30 shadow-lg shadow-brand-500/5' 
+                                    : 'bg-white/40 dark:bg-[#1c1c1e]/40 border-white/40 dark:border-white/5 opacity-80'
                             }`}
                         >
-                            {!notif.read && (
+                            {!notif.read && notif.type !== 'system' && (
                                 <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-brand-500/20 to-transparent rounded-bl-3xl -mr-4 -mt-4 blur-xl transition-opacity group-hover:opacity-75"></div>
                             )}
 
                             <div className="flex gap-4 relative z-10">
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border transition-colors backdrop-blur-sm ${
+                                    notif.type === 'system' ? 'bg-brand-500 text-white border-brand-500 shadow-lg shadow-brand-500/40' :
                                     !notif.read ? 'bg-gray-50/50 dark:bg-[#2c2c2e]/50 border-gray-100 dark:border-white/10' : 'bg-white/20 dark:bg-[#1c1c1e]/20 border-white/20 dark:border-white/5 grayscale opacity-50'
                                 }`}>
                                 {getIcon(notif.type)}
@@ -113,6 +118,19 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
                                     <p className={`text-xs leading-relaxed transition-colors ${!notif.read ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400 dark:text-gray-600'}`}>
                                         {notif.message}
                                     </p>
+                                    
+                                    {/* Botão de Ação (Update) */}
+                                    {notif.actionLabel && (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                notif.onAction && notif.onAction();
+                                            }}
+                                            className="mt-3 w-full bg-brand-500 text-white text-xs font-bold py-2.5 rounded-xl shadow-lg shadow-brand-500/20 active:scale-95 transition-all hover:bg-brand-600 flex items-center justify-center gap-2"
+                                        >
+                                            <ArrowDownCircle size={14} /> {notif.actionLabel}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                             
