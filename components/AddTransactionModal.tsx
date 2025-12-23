@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, DollarSign, Hash, Tag, CheckCircle2, Edit3 } from 'lucide-react';
 import { Transaction } from '../types';
@@ -91,7 +92,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
 
   if (isAnimating) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0d0d0d]/80 backdrop-blur-sm animate-fade-in">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0d0d0d]/80 backdrop-blur-sm animate-fade-in">
         <div className="flex flex-col items-center animate-scale-in">
            <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.5)] mb-6">
               <CheckCircle2 size={48} className="text-white" strokeWidth={3} />
@@ -104,7 +105,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-auto">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose} />
       
       <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-md max-h-[90vh] sm:h-auto sm:rounded-[2rem] rounded-t-[2rem] flex flex-col relative z-10 shadow-2xl animate-slide-up overflow-hidden border border-gray-200 dark:border-white/5">

@@ -109,7 +109,7 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
       <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
         
         {/* Header */}
