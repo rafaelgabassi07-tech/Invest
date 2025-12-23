@@ -1,18 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { FinancialSummary, PortfolioItem, Asset } from "../types";
-
-const logApiRequest = (service: 'brapi' | 'gemini') => {
-  try {
-    const logs = JSON.parse(localStorage.getItem('invest_api_logs') || '[]');
-    logs.push({ service, timestamp: Date.now() });
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const filtered = logs.filter((l: any) => l.timestamp > thirtyDaysAgo).slice(-1000);
-    localStorage.setItem('invest_api_logs', JSON.stringify(filtered));
-  } catch (e) {
-    console.warn("Falha ao logar telemetria", e);
-  }
-};
+import { logApiRequest } from './telemetryService.ts';
 
 export const getFinancialAdvice = async (
   query: string, 
@@ -21,10 +10,11 @@ export const getFinancialAdvice = async (
   assets: Asset[] = []
 ): Promise<string> => {
   try {
+    // REGISTRA CHAMADA REAL
     logApiRequest('gemini');
+    
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Detalhes enriquecidos para a IA
     const assetsContext = assets.map(a => 
       `${a.ticker}: Preço R$${a.currentPrice}, Variação Hoje: ${a.dailyChange.toFixed(2)}%, DY: ${a.dy12m}%, P/VP: ${a.pvp}`
     ).join(' | ');

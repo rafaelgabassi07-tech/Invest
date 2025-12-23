@@ -3,6 +3,7 @@
  * BRAPI Service for Brazilian Market Data
  * Documentation: https://brapi.dev/docs
  */
+import { logApiRequest } from './telemetryService.ts';
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos de cache
@@ -10,22 +11,10 @@ const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos de cache
 // Cache Granular
 const tickerCache = new Map<string, { timestamp: number; data: any }>();
 
-// Map para evitar múltiplas requisições simultâneas para o mesmo ticker (In-flight requests)
+// Map para evitar múltiplas requisições simultâneas para o mesmo ticker
 const inflightRequests = new Map<string, Promise<any>>();
 
-const logApiRequest = (service: 'brapi' | 'gemini') => {
-  try {
-    const logs = JSON.parse(localStorage.getItem('invest_api_logs') || '[]');
-    logs.push({ service, timestamp: Date.now() });
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const filtered = logs.filter((l: any) => l.timestamp > thirtyDaysAgo).slice(-1000);
-    localStorage.setItem('invest_api_logs', JSON.stringify(filtered));
-  } catch (e) {
-    console.warn("Falha ao logar telemetria", e);
-  }
-};
-
-const getBrapiToken = (): string => {
+export const getBrapiToken = (): string => {
   // @ts-ignore
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BRAPI_TOKEN) {
     // @ts-ignore
@@ -42,20 +31,19 @@ const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
   const now = Date.now();
   const cached = tickerCache.get(ticker);
 
-  // 1. Verificar Cache
   if (cached && (now - cached.timestamp < CACHE_DURATION)) {
     return cached.data;
   }
 
-  // 2. Verificar se já existe uma requisição em curso para este ticker
   if (inflightRequests.has(ticker)) {
     return inflightRequests.get(ticker);
   }
 
-  // 3. Criar nova promessa de busca
   const fetchPromise = (async () => {
     try {
+      // REGISTRA CHAMADA REAL
       logApiRequest('brapi');
+      
       const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}`);
 
       if (response.status === 429) {
@@ -75,7 +63,6 @@ const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
       console.error(`[BRAPI] Erro em ${ticker}:`, error);
       return cached ? cached.data : null;
     } finally {
-      // Remover do mapa de in-flight após conclusão
       inflightRequests.delete(ticker);
     }
   })();
@@ -86,8 +73,6 @@ const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
 
 export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length || !BRAPI_TOKEN) return [];
-  
-  console.log(`[BRAPI] Solicitando ${tickers.length} ativos...`);
   const promises = tickers.map(ticker => fetchSingleTicker(ticker));
   const results = await Promise.all(promises);
   return results.filter(item => item !== null);
