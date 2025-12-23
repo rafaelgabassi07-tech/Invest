@@ -19,15 +19,14 @@ body {
   background-color: var(--brand-muted, #050505);
 }
 
-@layer utilities {
-  .tap-active:active {
-    transform: scale(0.95);
-  }
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+/* Utilitários movidos para escopo global para evitar erro de build no PostCSS */
+.tap-active:active {
+  transform: scale(0.95);
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

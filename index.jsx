@@ -1,8 +1,8 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
-import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import App from './App.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import './index.css';
 
 console.log('%c[Invest Dashboard] Iniciando...', 'color: #f59e0b; font-weight: bold;');

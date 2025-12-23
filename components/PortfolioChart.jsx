@@ -1,15 +1,9 @@
 
 import React from 'react';
-import { PortfolioItem } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { PieChart as PieIcon, ChevronRight, CircleOff } from 'lucide-react';
 
-interface PortfolioChartProps {
-  items: PortfolioItem[];
-  onClick: () => void;
-}
-
-export const PortfolioChart: React.FC<PortfolioChartProps> = ({ items, onClick }) => {
+export const PortfolioChart = ({ items, onClick }) => {
   const isEmpty = items.length === 0;
 
   return (
