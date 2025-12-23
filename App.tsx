@@ -311,7 +311,7 @@ const App: React.FC = () => {
         </main>
         
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-        <AIAdvisor summary={summaryData} portfolio={portfolioData} />
+        <AIAdvisor summary={summaryData} portfolio={portfolioData} assets={assets} />
 
         {isAddModalOpen && (
           <AddTransactionModal 

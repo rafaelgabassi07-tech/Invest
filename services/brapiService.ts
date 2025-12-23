@@ -93,7 +93,7 @@ export const fetchTickersData = async (tickers: string[], forceRefresh = false) 
   
   try {
     const list = tickers.join(',');
-    // Added 'fundamental=false' to reduce payload size if not needed
+    // 'fundamental=false' para reduzir tamanho da resposta
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${list}?token=${BRAPI_TOKEN}&fundamental=false`);
     
     if (response.status === 401) {
@@ -103,7 +103,6 @@ export const fetchTickersData = async (tickers: string[], forceRefresh = false) 
     
     if (response.status === 429) {
         console.error("[BRAPI] Erro 429: Rate limit excedido. Usando cache se disponível.");
-        // Try to return stale cache if available as fallback
         const stale = localStorage.getItem(CACHE_PREFIX + cacheKey);
         if (stale) return JSON.parse(stale).data;
         return [];
