@@ -4,8 +4,7 @@ import {
   User, Shield, Calculator, Book, LogOut, ChevronRight, ChevronLeft,
   Check, Store, Globe, Trash2, HelpCircle, Database, 
   CloudDownload, CloudUpload, AlertCircle, Activity, Server, Cpu,
-  RefreshCcw, Eye, Key, Sparkles, Code2, Heart, ExternalLink, Mail, EyeOff, ShieldCheck,
-  CheckCircle2, XCircle
+  RefreshCcw, Eye, Key, Sparkles, Code2, Heart, ExternalLink, Mail, EyeOff, ShieldCheck
 } from 'lucide-react';
 import { AppTheme, Asset, Transaction } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -87,27 +86,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
 
   const apiTelemetry = useMemo(() => {
     const logs = getApiLogs();
-    
-    const stats = {
-        brapi: { total: 0, success: 0, error: 0 },
-        gemini: { total: 0, success: 0, error: 0 }
-    };
-
-    logs.forEach(log => {
-        if (log.service === 'brapi') {
-            stats.brapi.total++;
-            if (log.status === 'error') stats.brapi.error++;
-            else stats.brapi.success++;
-        } else if (log.service === 'gemini') {
-            stats.gemini.total++;
-            if (log.status === 'error') stats.gemini.error++;
-            else stats.gemini.success++;
-        }
+    const grouped: Record<string, { date: string, total: number }> = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      grouped[key] = { date: key, total: 0 };
+    }
+    logs.forEach((log) => {
+      const key = new Date(log.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      if (grouped[key]) grouped[key].total++;
     });
 
     return {
-      stats,
+      chartData: Object.values(grouped),
+      totalBrapi: logs.filter(l => l.service === 'brapi').length,
+      totalGemini: logs.filter(l => l.service === 'gemini').length,
       total: logs.length,
+      last24h: logs.filter(l => l.timestamp > Date.now() - 24 * 60 * 60 * 1000).length,
       tokens: {
           brapi: getBrapiToken(),
           gemini: process.env.API_KEY || 'N/A'
@@ -132,7 +128,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
   ];
 
   const maskToken = (token: string) => {
-      if (!token || token === 'N/A') return 'Indisponível (Não Configurado)';
+      if (!token || token === 'N/A') return 'Indisponível';
       if (!showTokens) return token.substring(0, 3) + '••••••••' + token.substring(token.length - 3);
       return token;
   };
@@ -217,43 +213,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                  </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                 {/* BRAPI STATUS */}
                  <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-5 rounded-3xl border border-white/5 shadow-md flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                        <Server size={20} className="text-blue-500" />
-                        <span className={`relative flex h-2 w-2 ${apiTelemetry.stats.brapi.error > 0 ? 'bg-rose-500' : 'bg-emerald-500'} rounded-full`}></span>
-                    </div>
-                    <div>
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase">BRAPI</h4>
-                        <p className="text-sm font-black mb-1">Total: {apiTelemetry.stats.brapi.total}</p>
-                        <div className="flex gap-2 text-[10px] font-bold">
-                            <span className="text-emerald-500 flex items-center gap-0.5"><CheckCircle2 size={10} /> {apiTelemetry.stats.brapi.success}</span>
-                            <span className="text-rose-500 flex items-center gap-0.5"><XCircle size={10} /> {apiTelemetry.stats.brapi.error}</span>
-                        </div>
-                    </div>
+                    <div className="flex justify-between items-center"><Server size={20} className="text-blue-500" /><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span></div>
+                    <div><h4 className="text-[10px] font-bold text-gray-400 uppercase">BRAPI ({apiTelemetry.totalBrapi})</h4><p className="text-sm font-black">Ativo</p></div>
                  </div>
-
-                 {/* GEMINI STATUS */}
                  <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-5 rounded-3xl border border-white/5 shadow-md flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
-                        <Cpu size={20} className="text-brand-500" />
-                        <span className={`relative flex h-2 w-2 ${apiTelemetry.stats.gemini.error > 0 ? 'bg-rose-500' : 'bg-emerald-500'} rounded-full`}></span>
-                    </div>
-                    <div>
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase">GEMINI IA</h4>
-                        <p className="text-sm font-black mb-1">Total: {apiTelemetry.stats.gemini.total}</p>
-                        <div className="flex gap-2 text-[10px] font-bold">
-                            <span className="text-emerald-500 flex items-center gap-0.5"><CheckCircle2 size={10} /> {apiTelemetry.stats.gemini.success}</span>
-                            <span className="text-rose-500 flex items-center gap-0.5"><XCircle size={10} /> {apiTelemetry.stats.gemini.error}</span>
-                        </div>
-                    </div>
+                    <div className="flex justify-between items-center"><Cpu size={20} className="text-brand-500" /><span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span></div>
+                    <div><h4 className="text-[10px] font-bold text-gray-400 uppercase">GEMINI ({apiTelemetry.totalGemini})</h4><p className="text-sm font-black">Ativo</p></div>
                  </div>
-              </div>
-              
-              <div className="bg-brand-500/5 p-4 rounded-2xl border border-brand-500/10">
-                 <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
-                    <span className="font-bold text-brand-500">Nota sobre cotas:</span> O Gemini tem um limite gratuito rigoroso (RPD/RPM). Se houver muitos erros, aguarde alguns minutos. A telemetria acima é armazenada localmente para diagnóstico.
-                 </p>
               </div>
             </div>
           </div>

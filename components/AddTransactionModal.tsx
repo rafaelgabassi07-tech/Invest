@@ -112,11 +112,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   }
 
   return (
-    // CORREÇÃO: Ajuste de pl-0 md:pl-72 para centralização correta em desktop e estilo bottom-sheet em mobile
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto pl-0 md:pl-72">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose} />
       
-      <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-md max-h-[90vh] sm:h-auto sm:rounded-[2.5rem] rounded-t-[2.5rem] flex flex-col relative z-10 shadow-2xl animate-slide-up overflow-hidden border border-gray-200 dark:border-white/5 m-0 md:m-auto">
+      <div className="bg-white dark:bg-[#1c1c1e] w-full max-w-md max-h-[90vh] sm:h-auto sm:rounded-[2.5rem] rounded-t-[2.5rem] flex flex-col relative z-10 shadow-2xl animate-slide-up overflow-hidden border border-gray-200 dark:border-white/5 m-0 md:m-4">
         
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl sticky top-0 z-20">

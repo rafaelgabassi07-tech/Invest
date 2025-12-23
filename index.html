@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR" class="dark">
   <head>
@@ -12,7 +11,12 @@
     <title>Invest Dashboard</title>
     <script>
       // Global shim for process.env
-      window.process = window.process || { env: {} };
+      // API Key configurada manualmente para uso restrito.
+      window.process = window.process || { 
+        env: {
+          API_KEY: 'AIzaSyAlYnpoiYoOjKvTPmiXvp344WmSrijze3o'
+        } 
+      };
       window.global = window;
     </script>
     <script src="https://cdn.tailwindcss.com"></script>

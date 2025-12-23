@@ -18,71 +18,53 @@ if (rootElement) {
   );
 }
 
-// ==========================================
-// Lógica de Service Worker & Atualização Manual
-// ==========================================
-
+// Variável para armazenar o worker que está esperando
 let waitingWorker: ServiceWorker | null = null;
 
-// Função chamada pela UI para disparar a atualização
+// Função global chamada pelo botão da notificação
 window.updateApp = () => {
     if (waitingWorker) {
-        console.log('[SW] Enviando comando SKIP_WAITING para o worker em espera.');
+        console.log('[SW] Usuário confirmou atualização. Enviando SKIP_WAITING.');
         waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     } else {
-        // Fallback: se não houver worker esperando mas a UI pediu update, forçamos reload
-        console.warn('[SW] Nenhum worker em espera encontrado. Recarregando forçado.');
-        window.location.reload();
+        console.log('[SW] Nenhum worker esperando atualização.');
+        window.location.reload(); // Fallback
     }
 };
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-        const registration = await navigator.serviceWorker.register('/service-worker.js');
-        console.log('[SW] Registrado com escopo:', registration.scope);
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => {
+        console.log('[SW] Registrado. Escopo:', registration.scope);
 
-        // 1. Verifica se já existe um worker esperando (atualização baixada em sessão anterior)
+        // Caso 1: O navegador já baixou e o worker está esperando desde um load anterior
         if (registration.waiting) {
-            console.log('[SW] Atualização encontrada em estado WAITING.');
             waitingWorker = registration.waiting;
             window.dispatchEvent(new Event('invest-update-available'));
         }
 
-        // 2. Monitora novas atualizações encontradas durante o uso
+        // Caso 2: Uma nova atualização foi encontrada agora
         registration.onupdatefound = () => {
             const installingWorker = registration.installing;
             if (installingWorker) {
                 installingWorker.onstatechange = () => {
-                    // Quando o novo worker termina de instalar, ele entra em 'installed'.
-                    // Se já existe um controller (app rodando), significa que é uma atualização.
+                    // Se instalou com sucesso, mas ainda temos um controller ativo (app rodando)
+                    // então ele entra em 'installed' (que é semanticamente 'waiting' para ativação)
                     if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        console.log('[SW] Nova atualização instalada e pronta (WAITING).');
                         waitingWorker = installingWorker;
                         window.dispatchEvent(new Event('invest-update-available'));
                     }
                 };
             }
         };
-
-        // 3. Verifica atualizações periodicamente (a cada 1 hora)
-        setInterval(() => {
-            console.log('[SW] Verificando atualizações periodicamente...');
-            registration.update();
-        }, 60 * 60 * 1000);
-
-    } catch (error) {
-        console.error('[SW] Falha no registro:', error);
-    }
+      })
+      .catch(error => console.warn('[SW] Falha no registro:', error));
       
-    // 4. Quando o worker atual mudar (após o skipWaiting), recarregamos a página
-    let refreshing = false;
+    // Quando o novo worker assume (pós skipWaiting), recarregamos a página
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-            console.log('[SW] Controlador alterado. Recarregando app agora.');
-            refreshing = true;
-            window.location.reload();
-        }
+        console.log('[SW] Controlador alterado. Recarregando app...');
+        window.location.reload();
     });
   });
 }

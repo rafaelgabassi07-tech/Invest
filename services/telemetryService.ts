@@ -9,20 +9,19 @@ export type ApiService = 'brapi' | 'gemini';
 export interface ApiLogEntry {
   service: ApiService;
   timestamp: number;
-  status: 'success' | 'error';
 }
 
 const LOG_KEY = 'invest_api_logs';
 const MAX_LOGS = 2000;
 const RETENTION_DAYS = 30;
 
-export const logApiRequest = (service: ApiService, status: 'success' | 'error' = 'success') => {
+export const logApiRequest = (service: ApiService) => {
   try {
     const logsStr = localStorage.getItem(LOG_KEY);
     const logs: ApiLogEntry[] = logsStr ? JSON.parse(logsStr) : [];
     
     // Adiciona nova entrada
-    logs.push({ service, timestamp: Date.now(), status });
+    logs.push({ service, timestamp: Date.now() });
     
     // Filtra logs antigos e limita tamanho
     const retentionLimit = Date.now() - (RETENTION_DAYS * 24 * 60 * 60 * 1000);

@@ -41,31 +41,26 @@ const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
 
   const fetchPromise = (async () => {
     try {
+      // REGISTRA CHAMADA REAL
+      logApiRequest('brapi');
+      
       const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}`);
 
       if (response.status === 429) {
-        logApiRequest('brapi', 'error');
         return cached ? cached.data : null;
       }
 
-      if (!response.ok) {
-        logApiRequest('brapi', 'error');
-        return null;
-      }
+      if (!response.ok) return null;
 
       const json = await response.json();
       const result = json.results && json.results.length > 0 ? json.results[0] : null;
 
       if (result) {
         tickerCache.set(ticker, { timestamp: now, data: result });
-        logApiRequest('brapi', 'success');
-      } else {
-        logApiRequest('brapi', 'error');
       }
       return result;
     } catch (error) {
       console.error(`[BRAPI] Erro em ${ticker}:`, error);
-      logApiRequest('brapi', 'error');
       return cached ? cached.data : null;
     } finally {
       inflightRequests.delete(ticker);
@@ -92,11 +87,9 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
   if (cached && (now - cached.timestamp < CACHE_DURATION)) return cached.data;
 
   try {
+    logApiRequest('brapi');
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}`);
-    if (!response.ok) {
-        logApiRequest('brapi', 'error');
-        return [];
-    }
+    if (!response.ok) return [];
     const data = await response.json();
     if (data.results?.[0]?.historicalDataPrice) {
       const formatted = data.results[0].historicalDataPrice.map((item: any) => ({
@@ -105,13 +98,10 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
         timestamp: item.date
       }));
       tickerCache.set(cacheKey, { timestamp: now, data: formatted });
-      logApiRequest('brapi', 'success');
       return formatted;
     }
-    logApiRequest('brapi', 'error');
     return [];
   } catch (error) {
-    logApiRequest('brapi', 'error');
     return [];
   }
 };

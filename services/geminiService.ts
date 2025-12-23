@@ -10,13 +10,10 @@ export const getFinancialAdvice = async (
   assets: Asset[] = []
 ): Promise<string> => {
   try {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-      logApiRequest('gemini', 'error');
-      throw new Error("API_KEY não configurada.");
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
+    // REGISTRA CHAMADA REAL
+    logApiRequest('gemini');
+    
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const assetsContext = assets.map(a => 
       `${a.ticker}: Preço R$${a.currentPrice}, Variação Hoje: ${a.dailyChange.toFixed(2)}%, DY: ${a.dy12m}%, P/VP: ${a.pvp}`
@@ -51,17 +48,9 @@ export const getFinancialAdvice = async (
       }
     });
 
-    // Se chegou aqui, sucesso
-    logApiRequest('gemini', 'success');
     return response.text || "Desculpe, não consegui processar sua análise agora.";
-  } catch (error: any) {
+  } catch (error) {
     console.error("[Gemini Advisor] Erro de conexão:", error);
-    logApiRequest('gemini', 'error');
-    
-    if (error.message?.includes('429')) {
-      return "⚠️ Limite de requisições atingido. Por favor, aguarde um momento antes de tentar novamente.";
-    }
-    
     return "Ocorreu um erro ao conectar com o serviço de IA. Verifique sua conexão ou se a API_KEY é válida.";
   }
 };
