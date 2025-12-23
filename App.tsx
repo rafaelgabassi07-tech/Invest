@@ -63,8 +63,7 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('invest_theme');
       if (!saved) return AVAILABLE_THEMES[0];
-      const parsed = JSON.parse(saved);
-      return parsed && parsed.id ? parsed : AVAILABLE_THEMES[0];
+      return JSON.parse(saved);
     } catch (e) {
       return AVAILABLE_THEMES[0];
     }
@@ -79,7 +78,7 @@ const App: React.FC = () => {
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
   const refreshMarketData = useCallback(async () => {
-    if (isRefreshing || !assets || assets.length === 0) return;
+    if (isRefreshing || assets.length === 0) return;
     setIsRefreshing(true);
     try {
         const tickers = assets.map(a => a.ticker);
@@ -105,8 +104,8 @@ const App: React.FC = () => {
   }, [assets, isRefreshing]);
 
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
-    if (newData.assets && Array.isArray(newData.assets)) setAssets(newData.assets);
-    if (newData.transactions && Array.isArray(newData.transactions)) setTransactions(newData.transactions);
+    if (newData.assets) setAssets(newData.assets);
+    if (newData.transactions) setTransactions(newData.transactions);
     setTimeout(() => refreshMarketData(), 500);
   }, [refreshMarketData]);
 
@@ -116,8 +115,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (!currentTheme || !currentTheme.colors) return;
-    
     currentTheme.type === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
     const styles = {
       '--brand-primary': currentTheme.colors.primary,
@@ -131,14 +128,12 @@ const App: React.FC = () => {
 
   const summaryData = useMemo(() => {
     let balance = 0, cost = 0, projected = 0, weightedChange = 0;
-    if (Array.isArray(assets)) {
-      assets.forEach(a => {
-          balance += (a.totalValue || 0);
-          cost += (a.totalCost || 0);
-          projected += ((a.lastDividend || 0) * (a.quantity || 0) * 12);
-          weightedChange += ((a.dailyChange || 0) * (a.totalValue || 0));
-      });
-    }
+    assets.forEach(a => {
+        balance += (a.totalValue || 0);
+        cost += (a.totalCost || 0);
+        projected += ((a.lastDividend || 0) * (a.quantity || 0) * 12);
+        weightedChange += ((a.dailyChange || 0) * (a.totalValue || 0));
+    });
     const weightedAvgChange = balance > 0 ? weightedChange / balance : 0;
     return {
       totalBalance: balance, totalInvested: cost, yieldOnCost: cost > 0 ? (projected / cost) * 100 : 0,
@@ -149,7 +144,7 @@ const App: React.FC = () => {
 
   const portfolioData = useMemo(() => {
     const total = summaryData.totalBalance;
-    if (total === 0 || !Array.isArray(assets)) return [];
+    if (total === 0) return [];
     const groups: Record<string, number> = {};
     assets.forEach(a => { groups[a.assetType] = (groups[a.assetType] || 0) + a.totalValue; });
     return Object.entries(groups).map(([name, value], index) => ({
@@ -160,15 +155,6 @@ const App: React.FC = () => {
 
   if (isAppLoading) return <SplashScreen onComplete={handleSplashComplete} />;
 
-  const getHeaderTitle = () => {
-    switch(activeTab) {
-      case 'dashboard': return "Invest";
-      case 'wallet': return "Carteira";
-      case 'transactions': return "Extrato";
-      default: return "Ajustes";
-    }
-  };
-
   return (
     <div 
         className="min-h-screen flex justify-center text-gray-900 dark:text-white font-sans overflow-hidden relative transition-colors duration-700"
@@ -177,7 +163,7 @@ const App: React.FC = () => {
       <div className="bg-noise opacity-[0.02]"></div>
       <div className="w-full max-w-md relative flex flex-col h-screen bg-transparent z-10">
         <Header 
-          title={getHeaderTitle()} 
+          title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
           subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
           showBackButton={['settings'].includes(activeTab)}
           onBackClick={() => setActiveTab(previousTab)}
