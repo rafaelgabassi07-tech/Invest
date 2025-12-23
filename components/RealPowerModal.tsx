@@ -1,32 +1,20 @@
+
 import React from 'react';
-import { ChevronLeft, ShieldCheck, TrendingUp, AlertCircle, Info } from 'lucide-react';
+import { ChevronLeft, ShieldCheck, TrendingUp, AlertCircle, BarChart3 } from 'lucide-react';
 import { AreaChart, Area, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface RealPowerModalProps {
   onClose: () => void;
 }
 
-// Mock Data for Analysis
-const historyData = [
-  { month: 'Jul', yield: 0.85, inflation: 0.12, real: 0.73 },
-  { month: 'Ago', yield: 0.92, inflation: 0.23, real: 0.69 },
-  { month: 'Set', yield: 0.88, inflation: 0.26, real: 0.62 },
-  { month: 'Out', yield: 0.95, inflation: 0.24, real: 0.71 },
-  { month: 'Nov', yield: 0.82, inflation: 0.28, real: 0.54 },
-  { month: 'Dez', yield: 1.05, inflation: 0.56, real: 0.49 },
-  { month: 'Jan', yield: 0.98, inflation: 0.42, real: 0.56 },
-  { month: 'Fev', yield: 0.95, inflation: 0.83, real: 0.12 },
-  { month: 'Mar', yield: 1.10, inflation: 0.16, real: 0.94 },
-  { month: 'Abr', yield: 1.05, inflation: 0.38, real: 0.67 },
-  { month: 'Mai', yield: 1.02, inflation: 0.46, real: 0.56 },
-  { month: 'Jun', yield: 1.08, inflation: 0.21, real: 0.87 },
-];
+// Sem dados iniciais
+const historyData: any[] = [];
 
 export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
-  // Calculations
-  const accumulatedNominal = historyData.reduce((acc, curr) => acc + curr.yield, 0);
-  const accumulatedInflation = historyData.reduce((acc, curr) => acc + curr.inflation, 0);
-  const accumulatedReal = accumulatedNominal - accumulatedInflation;
+  const accumulatedNominal = 0;
+  const accumulatedInflation = 0;
+  const accumulatedReal = 0;
+  const hasData = historyData.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto bg-[#0d0d0d]">
@@ -84,12 +72,13 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
             </div>
 
             {/* Chart */}
-            <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] p-5 mb-6 border border-gray-200 dark:border-white/5 shadow-lg animate-slide-up">
-                <div className="flex items-center justify-between mb-4 px-2">
-                    <h3 className="text-gray-900 dark:text-white font-bold text-sm">Rentabilidade vs. Inflação</h3>
-                </div>
-                
-                <div className="h-56 w-full">
+            <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] p-5 mb-6 border border-gray-200 dark:border-white/5 shadow-lg animate-slide-up flex items-center justify-center h-56">
+                {!hasData ? (
+                    <div className="text-center opacity-40">
+                         <BarChart3 size={32} className="mx-auto mb-2 text-gray-500" />
+                         <p className="text-xs font-bold text-gray-500">Dados insuficientes</p>
+                    </div>
+                ) : (
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={historyData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <defs>
@@ -97,22 +86,14 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
                                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
                                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                                 </linearGradient>
-                                <linearGradient id="colorInflation" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                                </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#88888820" vertical={false} />
                             <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} dy={10} />
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#1c1c1e', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                                itemStyle={{ fontSize: '11px', fontWeight: 'bold' }}
-                            />
+                            <Tooltip contentStyle={{ backgroundColor: '#1c1c1e', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px' }} />
                             <Area type="monotone" dataKey="yield" name="Rentabilidade" stroke="#6366f1" strokeWidth={2} fill="url(#colorYield)" />
-                            <Area type="monotone" dataKey="inflation" name="Inflação" stroke="#f43f5e" strokeWidth={2} fill="url(#colorInflation)" />
                         </AreaChart>
                     </ResponsiveContainer>
-                </div>
+                )}
             </div>
 
             {/* Disclaimer */}
@@ -123,30 +104,6 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
                      <p className="text-gray-500 dark:text-gray-400 text-[10px] leading-relaxed">
                         O ganho real é o que realmente importa para o crescimento do seu patrimônio. Ele desconta a inflação (IPCA) da sua rentabilidade nominal, mostrando o aumento efetivo do seu poder de compra.
                      </p>
-                 </div>
-            </div>
-
-            {/* Monthly Breakdown */}
-            <div className="mt-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
-                 <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-4 px-2">Detalhamento Mensal</h3>
-                 <div className="space-y-3">
-                     {[...historyData].reverse().map((item, idx) => (
-                         <div key={idx} className="bg-white dark:bg-[#1c1c1e] p-4 rounded-2xl border border-gray-200 dark:border-white/5 flex items-center justify-between shadow-sm">
-                             <div className="flex items-center gap-4">
-                                 <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#2c2c2e] flex items-center justify-center border border-gray-100 dark:border-white/5 font-bold text-xs text-gray-500 uppercase">
-                                     {item.month}
-                                 </div>
-                                 <div>
-                                     <p className="text-gray-900 dark:text-white font-bold text-sm">Rentabilidade: <span className="text-indigo-500">+{item.yield}%</span></p>
-                                     <p className="text-gray-500 text-[10px]">Inflação: <span className="text-rose-500">-{item.inflation}%</span></p>
-                                 </div>
-                             </div>
-                             <div className="text-right">
-                                 <p className="text-emerald-500 font-bold text-sm">+{item.real.toFixed(2)}%</p>
-                                 <span className="text-[9px] text-gray-400 font-bold uppercase">Real</span>
-                             </div>
-                         </div>
-                     ))}
                  </div>
             </div>
 

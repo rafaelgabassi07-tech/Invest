@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Asset } from '../types.ts';
 import { AssetCard } from './AssetCard.tsx';
-import { Wallet as WalletIcon, ArrowDown, ArrowUp } from 'lucide-react';
+import { Wallet as WalletIcon, ArrowDown, ArrowUp, PlusCircle } from 'lucide-react';
 
 interface WalletViewProps {
   assets: Asset[];
@@ -109,14 +109,24 @@ export const WalletView: React.FC<WalletViewProps> = ({ assets, onAssetClick }) 
        </div>
        
        <div className="px-4 space-y-2 min-h-[50vh]">
-         {sortedAssets.map((asset, index) => (
+         {sortedAssets.length > 0 ? sortedAssets.map((asset, index) => (
            <AssetCard 
              key={asset.id} 
              asset={asset} 
              index={index}
              onClick={onAssetClick}
            />
-         ))}
+         )) : (
+            <div className="flex flex-col items-center justify-center py-16 opacity-60 animate-fade-in">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-4 border border-gray-200 dark:border-white/5 shadow-inner">
+                    <PlusCircle size={24} className="text-gray-400" />
+                </div>
+                <h3 className="text-gray-900 dark:text-white font-bold text-sm">Carteira Vazia</h3>
+                <p className="text-gray-500 text-xs mt-1 text-center max-w-[200px]">
+                    Toque no botão "+" no topo para adicionar sua primeira transação.
+                </p>
+            </div>
+         )}
        </div>
     </div>
   );

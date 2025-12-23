@@ -13,6 +13,7 @@ import { EvolutionCard } from './components/EvolutionCard.tsx';
 import { TransactionsView } from './components/TransactionsView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
 import { AIAdvisor } from './components/AIAdvisor.tsx';
+import { AddTransactionModal } from './components/AddTransactionModal.tsx';
 import { Asset, Transaction, AppTheme } from './types.ts';
 import { fetchTickersData } from './services/brapiService.ts';
 import { AVAILABLE_THEMES } from './services/themeService.ts';
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   const [previousTab, setPreviousTab] = useState('dashboard'); 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [modalOpen, setModalOpen] = useState<string | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
   const [assets, setAssets] = useState<Asset[]>(() => {
     try {
@@ -75,12 +77,13 @@ const App: React.FC = () => {
 
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
-  const refreshMarketData = useCallback(async () => {
+  const refreshMarketData = useCallback(async (force = false) => {
     if (isRefreshing || assets.length === 0) return;
     setIsRefreshing(true);
     try {
         const tickers = assets.map(a => a.ticker);
-        const liveData = await fetchTickersData(tickers);
+        // Passa 'force' para o serviço. Se true, ignora o cache.
+        const liveData = await fetchTickersData(tickers, force);
         
         if (liveData && liveData.length > 0) {
           setAssets(prev => prev.map(asset => {
@@ -90,7 +93,9 @@ const App: React.FC = () => {
                 currentPrice: live.regularMarketPrice,
                 totalValue: live.regularMarketPrice * asset.quantity,
                 dailyChange: live.regularMarketChangePercent || 0,
-                companyName: live.longName || asset.companyName
+                companyName: live.longName || asset.companyName,
+                // Preserva metadados extras se a API retornar
+                shortName: asset.shortName || live.symbol,
               } : asset;
           }));
         }
@@ -104,11 +109,102 @@ const App: React.FC = () => {
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
     if (newData.assets) setAssets(newData.assets);
     if (newData.transactions) setTransactions(newData.transactions);
-    setTimeout(() => refreshMarketData(), 500);
+    // Força atualização após importação para garantir dados frescos
+    setTimeout(() => refreshMarketData(true), 500);
+  }, [refreshMarketData]);
+
+  const handleSaveTransaction = useCallback((newTransaction: Transaction) => {
+    // 1. Atualizar histórico de transações
+    setTransactions(prev => [newTransaction, ...prev]);
+
+    // 2. Atualizar ou Criar Ativo na Carteira
+    setAssets(prevAssets => {
+      const assetIndex = prevAssets.findIndex(a => a.ticker === newTransaction.ticker);
+      
+      if (newTransaction.type === 'Compra') {
+        if (assetIndex >= 0) {
+          // Atualizar ativo existente
+          const asset = prevAssets[assetIndex];
+          const newQty = asset.quantity + newTransaction.quantity;
+          const newTotalCost = asset.totalCost + newTransaction.total;
+          const newAvgPrice = newTotalCost / newQty;
+          
+          const updatedAsset = {
+            ...asset,
+            quantity: newQty,
+            totalCost: newTotalCost,
+            averagePrice: newAvgPrice,
+            // Atualiza valor total assumindo preço atual de mercado (se disponível) ou preço pago
+            totalValue: asset.currentPrice * newQty 
+          };
+          
+          const newList = [...prevAssets];
+          newList[assetIndex] = updatedAsset;
+          return newList;
+        } else {
+          // Criar novo ativo
+          const newAsset: Asset = {
+            id: newTransaction.ticker,
+            ticker: newTransaction.ticker,
+            shortName: newTransaction.ticker.substring(0, 4),
+            companyName: newTransaction.ticker,
+            assetType: newTransaction.ticker.length > 5 || newTransaction.ticker.endsWith('11') ? 'FII' : 'Ação',
+            quantity: newTransaction.quantity,
+            currentPrice: newTransaction.price,
+            totalValue: newTransaction.total,
+            dailyChange: 0,
+            averagePrice: newTransaction.price,
+            totalCost: newTransaction.total,
+            lastDividend: 0,
+            lastDividendDate: '',
+            dy12m: 0,
+            color: '#' + Math.floor(Math.random()*16777215).toString(16),
+            pvp: 1,
+            vp: newTransaction.price,
+            liquidity: 'N/A',
+            netWorth: 'N/A',
+            segment: 'Outros',
+            allocationType: 'Outros'
+          };
+          return [...prevAssets, newAsset];
+        }
+      } else {
+         // Venda
+         if (assetIndex >= 0) {
+           const asset = prevAssets[assetIndex];
+           const newQty = Math.max(0, asset.quantity - newTransaction.quantity);
+           
+           if (newQty === 0) {
+             return prevAssets.filter(a => a.ticker !== newTransaction.ticker);
+           }
+           
+           // Reduz custo total proporcionalmente
+           const costRemoved = asset.averagePrice * newTransaction.quantity;
+           const newTotalCost = Math.max(0, asset.totalCost - costRemoved);
+           
+           const updatedAsset = {
+             ...asset,
+             quantity: newQty,
+             totalCost: newTotalCost,
+             totalValue: asset.currentPrice * newQty
+           };
+           const newList = [...prevAssets];
+           newList[assetIndex] = updatedAsset;
+           return newList;
+         }
+         return prevAssets;
+      }
+    });
+
+    // Tenta buscar dados atualizados do novo ativo (forçando refresh para pegar cotação atual)
+    setTimeout(() => refreshMarketData(true), 1000);
   }, [refreshMarketData]);
 
   useEffect(() => {
-    if (!isAppLoading) refreshMarketData();
+    if (!isAppLoading) {
+      // Carregamento inicial usa cache (force=false)
+      refreshMarketData(false);
+    }
   }, [isAppLoading, refreshMarketData]);
 
   useEffect(() => {
@@ -164,9 +260,12 @@ const App: React.FC = () => {
           title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
           subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
           showBackButton={['settings'].includes(activeTab)}
+          showAddButton={['dashboard', 'wallet', 'transactions'].includes(activeTab)}
+          onAddClick={() => setIsAddModalOpen(true)}
           onBackClick={() => setActiveTab(previousTab)}
           onSettingsClick={() => { setPreviousTab(activeTab); setActiveTab('settings'); }}
-          onRefreshClick={refreshMarketData}
+          // Botão de refresh força atualização (bypass cache)
+          onRefreshClick={() => refreshMarketData(true)}
         />
         
         <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 overscroll-contain">
@@ -198,6 +297,13 @@ const App: React.FC = () => {
         
         <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         <AIAdvisor summary={summaryData} portfolio={portfolioData} />
+
+        {isAddModalOpen && (
+          <AddTransactionModal 
+            onClose={() => setIsAddModalOpen(false)} 
+            onSave={handleSaveTransaction} 
+          />
+        )}
 
         <Suspense fallback={null}>
             {selectedAsset && <AssetDetailModal asset={selectedAsset} transactions={transactions} onClose={() => setSelectedAsset(null)} />}

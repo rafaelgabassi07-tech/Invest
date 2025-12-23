@@ -2,7 +2,7 @@
 import React from 'react';
 import { PortfolioItem } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { PieChart as PieIcon, ChevronRight } from 'lucide-react';
+import { PieChart as PieIcon, ChevronRight, CircleOff } from 'lucide-react';
 
 interface PortfolioChartProps {
   items: PortfolioItem[];
@@ -10,6 +10,8 @@ interface PortfolioChartProps {
 }
 
 export const PortfolioChart: React.FC<PortfolioChartProps> = ({ items, onClick }) => {
+  const isEmpty = items.length === 0;
+
   return (
     <div 
       onClick={onClick}
@@ -38,53 +40,59 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({ items, onClick }
       </div>
 
       <div className="flex items-center relative z-10">
-        {/* Progress Bars List */}
-        <div className="flex-1 pr-6 space-y-3">
-          {items.map((item, index) => (
-            <div key={item.id} style={{ transitionDelay: `${index * 50}ms` }} className="group/item">
-              <div className="flex justify-between items-end mb-1">
-                <span className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wide group-hover/item:text-gray-700 dark:group-hover/item:text-gray-300 transition-colors">{item.name}</span>
-                <span className="text-gray-900 dark:text-white text-[10px] font-bold transition-colors">{item.percentage}%</span>
-              </div>
-              <div className="h-1.5 w-full bg-gray-100/50 dark:bg-[#0d0d0d]/50 rounded-full overflow-hidden border border-white/20 dark:border-white/5">
-                <div 
-                  className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden group-hover/item:opacity-80" 
-                  style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
-                >
-                </div>
-              </div>
+        {isEmpty ? (
+            <div className="w-full py-4 flex flex-col items-center justify-center opacity-50 gap-2">
+                 <CircleOff size={24} className="text-gray-400" />
+                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Sem dados</span>
             </div>
-          ))}
-        </div>
-
-        {/* Donut Chart */}
-        <div className="w-24 h-24 relative shrink-0">
-           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={items}
-                innerRadius={32}
-                outerRadius={42} 
-                paddingAngle={4}
-                dataKey="percentage"
-                stroke="none"
-                startAngle={90}
-                endAngle={-270}
-                cornerRadius={4}
-              >
-                {items.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+        ) : (
+            <>
+                <div className="flex-1 pr-6 space-y-3">
+                {items.map((item, index) => (
+                    <div key={item.id} style={{ transitionDelay: `${index * 50}ms` }} className="group/item">
+                    <div className="flex justify-between items-end mb-1">
+                        <span className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-wide group-hover/item:text-gray-700 dark:group-hover/item:text-gray-300 transition-colors">{item.name}</span>
+                        <span className="text-gray-900 dark:text-white text-[10px] font-bold transition-colors">{item.percentage}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-gray-100/50 dark:bg-[#0d0d0d]/50 rounded-full overflow-hidden border border-white/20 dark:border-white/5">
+                        <div 
+                        className="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden group-hover/item:opacity-80" 
+                        style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
+                        >
+                        </div>
+                    </div>
+                    </div>
                 ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-          {/* Center Hole Decoration */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-             <div className="w-14 h-14 rounded-full bg-white/50 dark:bg-[#1c1c1e]/50 shadow-[inset_0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] flex items-center justify-center transition-colors backdrop-blur-sm">
-                <span className="text-gray-400 dark:text-gray-600 font-bold text-[9px]">{items.length}</span>
-             </div>
-          </div>
-        </div>
+                </div>
+
+                <div className="w-24 h-24 relative shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                    <Pie
+                        data={items}
+                        innerRadius={32}
+                        outerRadius={42} 
+                        paddingAngle={4}
+                        dataKey="percentage"
+                        stroke="none"
+                        startAngle={90}
+                        endAngle={-270}
+                        cornerRadius={4}
+                    >
+                        {items.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                        ))}
+                    </Pie>
+                    </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-14 h-14 rounded-full bg-white/50 dark:bg-[#1c1c1e]/50 shadow-[inset_0_2px_8px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)] flex items-center justify-center transition-colors backdrop-blur-sm">
+                        <span className="text-gray-400 dark:text-gray-600 font-bold text-[9px]">{items.length}</span>
+                    </div>
+                </div>
+                </div>
+            </>
+        )}
       </div>
     </div>
   );
