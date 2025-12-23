@@ -1,8 +1,5 @@
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+/* Estilos globais e scrollbars */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 10px; }
@@ -16,4 +13,13 @@ body {
   min-height: 100vh;
   -webkit-tap-highlight-color: transparent;
   background-color: var(--brand-muted, #050505);
+}
+
+/* Utilitário para esconder scrollbar mantendo funcionalidade */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
