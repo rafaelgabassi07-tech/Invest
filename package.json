@@ -1,6 +1,7 @@
+
 {
   "name": "invest-dashboard",
-  "version": "1.0.2",
+  "version": "2.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

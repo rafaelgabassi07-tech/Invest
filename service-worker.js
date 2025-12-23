@@ -1,5 +1,5 @@
 
-const CACHE_VERSION = 'v2.4'; // Incrementado para disparar o update
+const CACHE_VERSION = 'v2.5'; // Incrementado para disparar o update
 const STATIC_CACHE = `invest-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `invest-runtime-${CACHE_VERSION}`;
 

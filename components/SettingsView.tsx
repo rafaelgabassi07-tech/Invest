@@ -135,7 +135,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
 
   const handleExportBackup = () => {
     setIsExporting(true);
-    const data = { version: "2.8.0", timestamp: new Date().toISOString(), assets, transactions };
+    const data = { version: "2.9.0", timestamp: new Date().toISOString(), assets, transactions };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -334,7 +334,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                 </div>
               </div>
               <h3 className="text-2xl font-black tracking-tighter">Invest Dashboard</h3>
-              <p className="text-brand-500 font-bold text-xs uppercase tracking-widest mb-8">Versão 2.8.0</p>
+              <p className="text-brand-500 font-bold text-xs uppercase tracking-widest mb-8">Versão 2.9.0</p>
               <div className="w-full space-y-6">
                 <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-6 rounded-[2rem] border border-white/5 shadow-lg">
                   <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><Sparkles size={16} className="text-brand-500" /> Nossa Missão</h4>
@@ -385,7 +385,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
       <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2 ml-1">Suporte</h3>
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-10 shadow-lg">
         <SettingsItem icon={Book} title="Glossário" subtitle="Termos do Mercado" onClick={() => setActiveSection('glossary')} />
-        <SettingsItem icon={HelpCircle} title="Sobre o App" subtitle="Versão 2.8.0" onClick={() => setActiveSection('about')} hasBorder={false} />
+        <SettingsItem icon={HelpCircle} title="Sobre o App" subtitle="Versão 2.9.0" onClick={() => setActiveSection('about')} hasBorder={false} />
       </div>
 
       <button onClick={() => window.location.reload()} className="w-full py-4 flex items-center justify-center gap-2 text-rose-500 opacity-80 hover:opacity-100 transition-all">
