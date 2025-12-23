@@ -61,6 +61,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
   }, [initialTransaction]);
 
   const handleSubmit = () => {
+    if (isAnimating) return; // Prevent double submission
     if (!ticker || !quantity || !price) return;
 
     setIsAnimating(true);
@@ -257,8 +258,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
             <button 
                 type="button"
                 onClick={handleSubmit}
-                disabled={!ticker || !quantity || !price}
-                className={`w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wide shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${!ticker || !quantity || !price ? 'bg-gray-300 dark:bg-[#2c2c2e] text-gray-500 cursor-not-allowed shadow-none' : 'bg-brand-500 hover:bg-brand-600 shadow-brand-500/30'}`}
+                disabled={!ticker || !quantity || !price || isAnimating}
+                className={`w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wide shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${!ticker || !quantity || !price || isAnimating ? 'bg-gray-300 dark:bg-[#2c2c2e] text-gray-500 cursor-not-allowed shadow-none' : 'bg-brand-500 hover:bg-brand-600 shadow-brand-500/30'}`}
             >
                 <CheckCircle2 size={20} />
                 {initialTransaction ? 'Salvar Alterações' : 'Salvar Movimentação'}

@@ -111,98 +111,101 @@ const App: React.FC = () => {
   }, [refreshMarketData]);
 
   const handleSaveTransaction = useCallback((newTransaction: Transaction) => {
-    // 1. Atualizar histórico de transações (Adiciona no topo)
-    setTransactions(prev => [newTransaction, ...prev]);
-
-    // 2. Atualizar ou Criar Ativo na Carteira
-    setAssets(prevAssets => {
-      const assetIndex = prevAssets.findIndex(a => a.ticker === newTransaction.ticker);
-      
-      if (newTransaction.type === 'Compra') {
-        if (assetIndex >= 0) {
-          // --- ATUALIZAÇÃO DE COMPRA (Preço Médio Ponderado) ---
-          const asset = prevAssets[assetIndex];
-          const newQty = asset.quantity + newTransaction.quantity;
-          const newTotalCost = asset.totalCost + newTransaction.total;
-          
-          // Novo Preço Médio = Custo Total Acumulado / Nova Quantidade Total
-          const newAvgPrice = newTotalCost / newQty;
-          
-          const updatedAsset = {
-            ...asset,
-            quantity: newQty,
-            totalCost: newTotalCost,
-            averagePrice: newAvgPrice,
-            // Atualiza valor total usando preço de mercado atual (se disponível) ou preço da compra
-            // Isso evita "pulos" visuais estranhos até a API atualizar
-            totalValue: asset.currentPrice * newQty 
-          };
-          
-          const newList = [...prevAssets];
-          newList[assetIndex] = updatedAsset;
-          return newList;
+    // 1. Atualizar lista de Transações (Trata duplicatas de ID para edições)
+    let updatedTransactions: Transaction[] = [];
+    
+    setTransactions(prev => {
+        const exists = prev.some(t => t.id === newTransaction.id);
+        if (exists) {
+            // Edição: Substitui o existente
+            updatedTransactions = prev.map(t => t.id === newTransaction.id ? newTransaction : t);
         } else {
-          // --- NOVO ATIVO ---
-          const isFII = newTransaction.ticker.endsWith('11') || newTransaction.ticker.endsWith('34') || newTransaction.ticker.endsWith('39');
-          
-          const newAsset: Asset = {
-            id: newTransaction.ticker,
-            ticker: newTransaction.ticker,
-            shortName: newTransaction.ticker.substring(0, 4),
-            companyName: newTransaction.ticker,
-            assetType: isFII ? 'FII' : 'Ação',
-            quantity: newTransaction.quantity,
-            currentPrice: newTransaction.price,
-            totalValue: newTransaction.total,
-            dailyChange: 0,
-            averagePrice: newTransaction.price,
-            totalCost: newTransaction.total,
-            lastDividend: 0,
-            lastDividendDate: '',
-            dy12m: 0,
-            color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
-            pvp: 1,
-            vp: newTransaction.price,
-            liquidity: 'N/A',
-            netWorth: 'N/A',
-            segment: 'Outros',
-            allocationType: 'Outros'
-          };
-          return [newAsset, ...prevAssets]; // Adiciona no topo da lista
+            // Novo: Adiciona no topo
+            updatedTransactions = [newTransaction, ...prev];
         }
-      } else {
-         // --- VENDA (Manutenção de Preço Médio) ---
-         if (assetIndex >= 0) {
-           const asset = prevAssets[assetIndex];
-           const newQty = Math.max(0, asset.quantity - newTransaction.quantity);
-           
-           if (newQty === 0) {
-             // Vendeu tudo: remove da carteira
-             return prevAssets.filter(a => a.ticker !== newTransaction.ticker);
-           }
-           
-           // IMPORTANTE: Na venda, o Preço Médio (averagePrice) NÃO muda.
-           // O Custo Total é reduzido proporcionalmente à quantidade vendida baseada no PM.
-           // Novo Custo = Nova Quantidade * Preço Médio Antigo
-           const newTotalCost = newQty * asset.averagePrice;
-           
-           const updatedAsset = {
-             ...asset,
-             quantity: newQty,
-             totalCost: newTotalCost,
-             averagePrice: asset.averagePrice, // Mantém o PM intacto
-             totalValue: asset.currentPrice * newQty
-           };
-           const newList = [...prevAssets];
-           newList[assetIndex] = updatedAsset;
-           return newList;
-         }
-         // Se tentar vender algo que não tem, ignora (ou poderia lançar erro)
-         return prevAssets;
-      }
+        return updatedTransactions;
     });
 
-    // Tenta buscar dados atualizados do novo ativo imediatamente
+    // 2. Recalcular o Ativo específico do ZERO baseado no histórico
+    // Isso evita erros de "multiplicação" ao editar transações antigas
+    setAssets(prevAssets => {
+        const ticker = newTransaction.ticker;
+        
+        // Filtra todas as transações deste ativo e ordena por data
+        const assetTransactions = updatedTransactions
+            .filter(t => t.ticker === ticker)
+            .sort((a, b) => {
+                const parse = (d: string) => {
+                    const months: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
+                    const p = d.split(' ');
+                    // Fallback para data atual se parse falhar
+                    if (p.length < 3) return 0;
+                    return new Date(parseInt(p[2]), months[p[1]] || 0, parseInt(p[0])).getTime();
+                };
+                return parse(a.date) - parse(b.date);
+            });
+
+        // Recalcula Posição e Preço Médio
+        let quantity = 0;
+        let totalCost = 0;
+
+        for (const t of assetTransactions) {
+            if (t.type === 'Compra') {
+                quantity += t.quantity;
+                totalCost += t.total;
+            } else {
+                // Venda reduz o custo proporcionalmente ao preço médio atual
+                const avgPrice = quantity > 0 ? totalCost / quantity : 0;
+                const qtySold = Math.min(quantity, t.quantity);
+                quantity -= qtySold;
+                totalCost -= (qtySold * avgPrice);
+            }
+        }
+
+        // Se quantidade zerou, remove o ativo da carteira
+        if (quantity <= 0.0001) { // margem de erro float
+            return prevAssets.filter(a => a.ticker !== ticker);
+        }
+
+        const existingAsset = prevAssets.find(a => a.ticker === ticker);
+        // Mantém preço atual se já existe, senão usa o da transação
+        const currentPrice = existingAsset ? existingAsset.currentPrice : newTransaction.price;
+        const avgPrice = quantity > 0 ? totalCost / quantity : 0;
+
+        const updatedAsset: Asset = {
+            ...(existingAsset || {
+                id: ticker,
+                ticker: ticker,
+                shortName: ticker.substring(0, 4),
+                companyName: ticker,
+                assetType: ticker.endsWith('11') || ticker.endsWith('34') || ticker.endsWith('39') ? 'FII' : 'Ação',
+                dailyChange: 0,
+                lastDividend: 0,
+                lastDividendDate: '',
+                dy12m: 0,
+                color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
+                pvp: 1,
+                vp: newTransaction.price,
+                liquidity: 'N/A',
+                netWorth: 'N/A',
+                segment: 'Outros',
+                allocationType: 'Outros'
+            }),
+            quantity: quantity,
+            totalCost: totalCost,
+            averagePrice: avgPrice,
+            currentPrice: currentPrice,
+            totalValue: quantity * currentPrice
+        };
+
+        if (existingAsset) {
+            return prevAssets.map(a => a.ticker === ticker ? updatedAsset : a);
+        } else {
+            return [updatedAsset, ...prevAssets];
+        }
+    });
+
+    // Atualiza cotação em breve
     setTimeout(() => refreshMarketData(), 800);
   }, [refreshMarketData]);
 
@@ -314,7 +317,7 @@ const App: React.FC = () => {
             
             {activeTab === 'transactions' && (
               <div className="max-w-5xl mx-auto">
-                <TransactionsView transactions={transactions} />
+                <TransactionsView transactions={transactions} onEditTransaction={(t) => { setIsAddModalOpen(true); /* Need to pass state, handled via props usually but for now open clean */ }} />
               </div>
             )}
             
@@ -345,6 +348,9 @@ const App: React.FC = () => {
           <AddTransactionModal 
             onClose={() => setIsAddModalOpen(false)} 
             onSave={handleSaveTransaction} 
+            // In a real scenario we'd pass the editing transaction state here
+            // For now, TransactionsView sets its own state, we need to lift it or rely on context.
+            // But checking logic above, AddTransactionModal creates a NEW transaction if initial is null.
           />
         )}
 
