@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback, useRef } from 'react';
 import { Header } from './components/Header.tsx';
 import { SummaryCard } from './components/SummaryCard.tsx';
 import { PortfolioChart } from './components/PortfolioChart.tsx';
@@ -52,6 +52,14 @@ const App: React.FC = () => {
     }
   });
 
+  // Reference to assets to allow access inside useCallback without adding to dependency array
+  // This breaks the infinite loop: fetch -> update assets -> recreate fetch -> run effect -> fetch
+  const assetsRef = useRef(assets);
+
+  useEffect(() => {
+      assetsRef.current = assets;
+  }, [assets]);
+
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     try {
       const saved = localStorage.getItem('invest_transactions');
@@ -82,10 +90,15 @@ const App: React.FC = () => {
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
   const refreshMarketData = useCallback(async () => {
-    if (isRefreshing || assets.length === 0) return;
+    // Access current assets via ref to avoid dependency loop
+    const currentAssets = assetsRef.current;
+    
+    if (isRefreshing || currentAssets.length === 0) return;
+    
     setIsRefreshing(true);
     try {
-        const tickers = assets.map(a => a.ticker);
+        const tickers = currentAssets.map(a => a.ticker);
+        // Brapi service now has internal caching to prevent spam
         const liveData = await fetchTickersData(tickers);
         
         if (liveData && liveData.length > 0) {
@@ -105,22 +118,20 @@ const App: React.FC = () => {
     } finally {
         setIsRefreshing(false);
     }
-  }, [assets, isRefreshing]);
+  }, [isRefreshing]); // Removed 'assets' from dependency
 
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
     if (newData.assets) setAssets(newData.assets);
     if (newData.transactions) setTransactions(newData.transactions);
+    // Refresh triggered safely via timeout, but now logic is protected by Ref and Service Cache
     setTimeout(() => refreshMarketData(), 500);
   }, [refreshMarketData]);
 
   // --- LOGIC CORE: Transaction Management ---
   
-  // Função auxiliar para recalcular um ativo específico do zero baseando-se no histórico
   const recalculateAssetFromHistory = (ticker: string, allTransactions: Transaction[], currentAssets: Asset[]) => {
-    // 1. Filtrar transações apenas deste ativo
     const assetTransactions = allTransactions.filter(t => t.ticker === ticker);
 
-    // 2. Ordenar cronologicamente (Antigo -> Novo) para o cálculo do PM fazer sentido
     assetTransactions.sort((a, b) => {
         const parseDate = (d: string) => {
             const months: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
@@ -131,32 +142,24 @@ const App: React.FC = () => {
         return parseDate(a.date) - parseDate(b.date);
     });
 
-    // 3. Replay do histórico
     let quantity = 0;
-    let totalCost = 0; // Custo de Aquisição Total
+    let totalCost = 0;
 
     for (const t of assetTransactions) {
         if (t.type === 'Compra') {
-            // Compra aumenta quantidade e custo
             quantity += t.quantity;
             totalCost += t.total; 
         } else if (t.type === 'Venda') {
-            // Venda reduz quantidade
-            // O custo total reduz PROPORCIONALMENTE ao preço médio atual
-            // PM não muda na venda (Regra Contábil)
             const currentAvgPrice = quantity > 0 ? totalCost / quantity : 0;
-            const qtySold = Math.min(quantity, t.quantity); // Não vender mais que tem
-            
+            const qtySold = Math.min(quantity, t.quantity);
             quantity -= qtySold;
             totalCost -= (qtySold * currentAvgPrice);
         }
     }
 
-    // 4. Atualizar o estado dos Ativos
     const existingAsset = currentAssets.find(a => a.ticker === ticker);
     const lastTransPrice = assetTransactions.length > 0 ? assetTransactions[assetTransactions.length - 1].price : 0;
 
-    // Se a quantidade for zero (ou negativa por erro), removemos o ativo da carteira
     if (quantity <= 0.0001) {
         return currentAssets.filter(a => a.ticker !== ticker);
     }
@@ -169,7 +172,7 @@ const App: React.FC = () => {
             id: ticker,
             ticker: ticker,
             shortName: ticker.substring(0, 4),
-            companyName: ticker, // Será atualizado pela API depois
+            companyName: ticker,
             assetType: ticker.endsWith('11') || ticker.endsWith('34') || ticker.endsWith('39') ? 'FII' : 'Ação',
             dailyChange: 0,
             lastDividend: 0,
@@ -183,7 +186,7 @@ const App: React.FC = () => {
             segment: 'Outros',
             allocationType: 'Outros'
         }),
-        quantity: Number(quantity.toFixed(8)), // Evitar problemas de float precision
+        quantity: Number(quantity.toFixed(8)),
         totalCost: totalCost,
         averagePrice: avgPrice,
         currentPrice: currentPrice,
@@ -198,45 +201,39 @@ const App: React.FC = () => {
   };
 
   const handleSaveTransaction = useCallback((newTransaction: Transaction) => {
-    // 1. Atualizar lista de Transações
     let updatedTransactions: Transaction[] = [];
     
     setTransactions(prev => {
         const exists = prev.some(t => t.id === newTransaction.id);
         if (exists) {
-            // Edição
             updatedTransactions = prev.map(t => t.id === newTransaction.id ? newTransaction : t);
         } else {
-            // Novo
             updatedTransactions = [newTransaction, ...prev];
         }
         return updatedTransactions;
     });
 
-    // 2. Recalcular Ativo
     setAssets(prevAssets => recalculateAssetFromHistory(newTransaction.ticker, updatedTransactions, prevAssets));
-
-    // 3. Trigger Refresh
     setTimeout(() => refreshMarketData(), 500);
   }, [refreshMarketData]);
 
   const handleDeleteTransaction = useCallback((transactionId: string) => {
-    // Encontrar a transação antes de deletar para saber qual ticker recalcular
     const transactionToDelete = transactions.find(t => t.id === transactionId);
     if (!transactionToDelete) return;
 
-    // 1. Remover da lista
     const updatedTransactions = transactions.filter(t => t.id !== transactionId);
     setTransactions(updatedTransactions);
 
-    // 2. Recalcular Ativo
     setAssets(prevAssets => recalculateAssetFromHistory(transactionToDelete.ticker, updatedTransactions, prevAssets));
   }, [transactions]);
 
   // --- End Logic Core ---
 
+  // Initial load only
   useEffect(() => {
-    if (!isAppLoading) refreshMarketData();
+    if (!isAppLoading) {
+        refreshMarketData();
+    }
   }, [isAppLoading, refreshMarketData]);
 
   useEffect(() => {
@@ -288,7 +285,6 @@ const App: React.FC = () => {
     >
       <div className="bg-noise opacity-[0.02] absolute inset-0 pointer-events-none"></div>
       
-      {/* Desktop Sidebar */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} currentTheme={currentTheme} />
 
       <div className="flex-1 flex flex-col h-screen relative z-10 w-full overflow-hidden">
@@ -309,16 +305,12 @@ const App: React.FC = () => {
             {activeTab === 'dashboard' && (
               <div className="space-y-4 pt-2 pb-4">
                 <div className="grid grid-cols-1 md:grid-cols-12 md:gap-6 gap-3 px-1 md:px-0">
-                  
-                  {/* Row 1 */}
                   <div className="md:col-span-8">
                     <SummaryCard data={summaryData} />
                   </div>
                   <div className="md:col-span-4">
                      <PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} />
                   </div>
-
-                  {/* Row 2 */}
                   <div className="md:col-span-6 lg:col-span-3">
                     <EvolutionCard onClick={() => setModalOpen('evolution')} />
                   </div>
@@ -369,7 +361,6 @@ const App: React.FC = () => {
           </div>
         </main>
         
-        {/* Mobile Bottom Nav */}
         <div className="md:hidden">
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>

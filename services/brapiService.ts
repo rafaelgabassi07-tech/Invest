@@ -5,6 +5,16 @@
  */
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de cache
+
+// Cache em memória simples
+interface CacheData {
+  timestamp: number;
+  data: any;
+  key: string;
+}
+
+let requestCache: CacheData | null = null;
 
 // Função robusta para pegar o token, priorizando a variável de ambiente do Vite (Vercel)
 const getBrapiToken = (): string => {
@@ -35,16 +45,30 @@ export const fetchTickersData = async (tickers: string[]) => {
     console.warn("[BRAPI] Alerta: Token ausente. Dados reais não serão carregados.");
     return [];
   }
+
+  // Ordenar tickers para gerar uma chave de cache consistente
+  const sortedTickers = [...tickers].sort().join(',');
+  const now = Date.now();
+
+  // Verificar Cache
+  if (requestCache && requestCache.key === sortedTickers && (now - requestCache.timestamp < CACHE_DURATION)) {
+    console.log("[BRAPI] Usando dados em cache (economia de requisição)");
+    return requestCache.data;
+  }
   
   console.log(`[BRAPI] Solicitando cotações via token: ${BRAPI_TOKEN.substring(0, 4)}...`);
   
   try {
-    const list = tickers.join(',');
-    const response = await fetch(`${BRAPI_BASE_URL}/quote/${list}?token=${BRAPI_TOKEN}`);
+    const response = await fetch(`${BRAPI_BASE_URL}/quote/${sortedTickers}?token=${BRAPI_TOKEN}`);
     
     if (response.status === 401) {
         console.error("[BRAPI] Erro 401: Token inválido ou expirado. Verifique sua chave.");
         return [];
+    }
+    
+    if (response.status === 429) {
+        console.warn("[BRAPI] Rate limit atingido. Usando dados anteriores se disponíveis.");
+        return requestCache ? requestCache.data : [];
     }
     
     if (!response.ok) {
@@ -52,10 +76,20 @@ export const fetchTickersData = async (tickers: string[]) => {
     }
     
     const data = await response.json();
-    return data.results || [];
+    const results = data.results || [];
+
+    // Salvar no Cache
+    requestCache = {
+      timestamp: now,
+      data: results,
+      key: sortedTickers
+    };
+
+    return results;
   } catch (error) {
     console.error("[BRAPI] Falha crítica na busca de dados:", error);
-    return [];
+    // Retorna cache antigo em caso de erro de rede, se existir
+    return requestCache ? requestCache.data : [];
   }
 };
 
