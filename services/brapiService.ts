@@ -20,7 +20,7 @@ const getSafeEnv = (key: string): string => {
 const BRAPI_TOKEN = getSafeEnv('VITE_BRAPI_TOKEN') || 
                     getSafeEnv('BRAPI_TOKEN_API') || 
                     getSafeEnv('BRAPI_TOKEN') || 
-                    ''; 
+                    'qQubkDBNuT4NmqDc8MP7Hx'; 
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
 
