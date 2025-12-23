@@ -38,17 +38,42 @@ const App: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Safe Initialization from LocalStorage
   const [assets, setAssets] = useState<Asset[]>(() => {
-    const saved = localStorage.getItem('invest_assets');
-    return saved ? JSON.parse(saved) : INITIAL_ASSETS;
-  });
-  const [currentTheme, setCurrentTheme] = useState<AppTheme>(() => {
-    const saved = localStorage.getItem('invest_theme');
-    return saved ? JSON.parse(saved) : AVAILABLE_THEMES[0];
+    try {
+      const saved = localStorage.getItem('invest_assets');
+      if (!saved) return INITIAL_ASSETS;
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : INITIAL_ASSETS;
+    } catch (e) {
+      console.error("[App] Erro ao carregar ativos:", e);
+      return INITIAL_ASSETS;
+    }
   });
 
-  // Persistência local
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('invest_transactions');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("[App] Erro ao carregar transações:", e);
+      return [];
+    }
+  });
+
+  const [currentTheme, setCurrentTheme] = useState<AppTheme>(() => {
+    try {
+      const saved = localStorage.getItem('invest_theme');
+      if (!saved) return AVAILABLE_THEMES[0];
+      return JSON.parse(saved);
+    } catch (e) {
+      return AVAILABLE_THEMES[0];
+    }
+  });
+
+  // Auto-Persist
   useEffect(() => {
     localStorage.setItem('invest_assets', JSON.stringify(assets));
     localStorage.setItem('invest_transactions', JSON.stringify(transactions));
@@ -58,30 +83,34 @@ const App: React.FC = () => {
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
   const refreshMarketData = useCallback(async () => {
-    if (isRefreshing) return;
+    if (isRefreshing || assets.length === 0) return;
     setIsRefreshing(true);
-    const tickers = assets.map(a => a.ticker);
-    const liveData = await fetchTickersData(tickers);
-    
-    if (liveData && liveData.length > 0) {
-      setAssets(prev => prev.map(asset => {
-        const live = liveData.find((l: any) => l.symbol === asset.ticker);
-        return live ? {
-          ...asset,
-          currentPrice: live.regularMarketPrice,
-          totalValue: live.regularMarketPrice * asset.quantity,
-          dailyChange: live.regularMarketChangePercent,
-          companyName: live.longName || asset.companyName
-        } : asset;
-      }));
+    try {
+        const tickers = assets.map(a => a.ticker);
+        const liveData = await fetchTickersData(tickers);
+        
+        if (liveData && liveData.length > 0) {
+        setAssets(prev => prev.map(asset => {
+            const live = liveData.find((l: any) => l.symbol === asset.ticker);
+            return live ? {
+            ...asset,
+            currentPrice: live.regularMarketPrice,
+            totalValue: live.regularMarketPrice * asset.quantity,
+            dailyChange: live.regularMarketChangePercent || 0,
+            companyName: live.longName || asset.companyName
+            } : asset;
+        }));
+        }
+    } catch (err) {
+        console.error("[App] Erro ao atualizar mercado:", err);
+    } finally {
+        setIsRefreshing(false);
     }
-    setIsRefreshing(false);
   }, [assets, isRefreshing]);
 
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
-    if (newData.assets) setAssets(newData.assets);
-    if (newData.transactions) setTransactions(newData.transactions);
-    // Forçar atualização de mercado após importação
+    if (newData.assets && Array.isArray(newData.assets)) setAssets(newData.assets);
+    if (newData.transactions && Array.isArray(newData.transactions)) setTransactions(newData.transactions);
     setTimeout(() => refreshMarketData(), 500);
   }, [refreshMarketData]);
 
@@ -106,10 +135,10 @@ const App: React.FC = () => {
   const summaryData = useMemo(() => {
     let balance = 0, cost = 0, projected = 0, weightedChange = 0;
     assets.forEach(a => {
-        balance += a.totalValue;
-        cost += a.totalCost;
-        projected += (a.lastDividend * a.quantity * 12);
-        weightedChange += (a.dailyChange * a.totalValue);
+        balance += (a.totalValue || 0);
+        cost += (a.totalCost || 0);
+        projected += ((a.lastDividend || 0) * (a.quantity || 0) * 12);
+        weightedChange += ((a.dailyChange || 0) * (a.totalValue || 0));
     });
     const weightedAvgChange = balance > 0 ? weightedChange / balance : 0;
     return {
