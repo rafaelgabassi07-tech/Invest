@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Bot, Lightbulb } from 'lucide-react';
 import { getFinancialAdvice } from '../services/geminiService';
@@ -73,7 +74,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio }) => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-28 right-6 w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-secondary rounded-full flex items-center justify-center shadow-2xl shadow-brand-500/40 z-30 hover:scale-110 active:scale-95 transition-all group tap-active"
+        className="fixed bottom-28 md:bottom-10 right-6 w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-secondary rounded-full flex items-center justify-center shadow-2xl shadow-brand-500/40 z-30 hover:scale-110 active:scale-95 transition-all group tap-active"
       >
         <Sparkles size={24} className="text-white group-hover:animate-spin-slow" />
         {/* Status Dot */}

@@ -39,7 +39,7 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
   }, [data.totalBalance]);
 
   return (
-    <div className="mx-4 mt-2 mb-2 p-7 rounded-[2.5rem] bg-white/5 dark:bg-brand-muted/40 backdrop-blur-2xl relative overflow-hidden shadow-2xl border border-brand-highlight group animate-pop-in will-change-transform transform-gpu">
+    <div className="mx-4 md:mx-0 mt-2 md:mt-0 mb-2 md:mb-0 p-7 rounded-[2.5rem] bg-white/5 dark:bg-brand-muted/40 backdrop-blur-2xl relative overflow-hidden shadow-2xl border border-brand-highlight group animate-pop-in will-change-transform transform-gpu h-full">
       
       <div className="absolute top-0 right-0 w-80 h-80 bg-brand-primary/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/4 pointer-events-none transition-transform duration-1000 group-hover:scale-110"></div>
       
@@ -73,7 +73,7 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-y-8 gap-x-4 relative z-10 border-t border-brand-highlight pt-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-4 relative z-10 border-t border-brand-highlight pt-6">
         <div>
           <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Total Investido</p>
           <p className="text-gray-900 dark:text-white font-bold text-lg tracking-tight tabular-nums">

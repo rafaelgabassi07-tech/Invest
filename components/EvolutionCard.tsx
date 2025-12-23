@@ -17,7 +17,7 @@ export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="mx-4 p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in"
+      className="mx-4 md:mx-0 p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in h-full flex flex-col justify-between"
     >
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
@@ -29,11 +29,11 @@ export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
           </div>
           <div>
             <h3 className="text-gray-900 dark:text-white font-bold text-sm leading-none flex items-center gap-2">
-               Evolução Patrimonial
+               Evolução
                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
             </h3>
             <p className="text-gray-500 dark:text-gray-400 text-[10px] font-medium mt-1">
-               Rentabilidade Histórica
+               Rentabilidade
             </p>
           </div>
         </div>

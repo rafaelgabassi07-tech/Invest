@@ -4,6 +4,7 @@ import { Header } from './components/Header.tsx';
 import { SummaryCard } from './components/SummaryCard.tsx';
 import { PortfolioChart } from './components/PortfolioChart.tsx';
 import { BottomNav } from './components/BottomNav.tsx';
+import { Sidebar } from './components/Sidebar.tsx';
 import { WalletView } from './components/WalletView.tsx';
 import { SplashScreen } from './components/SplashScreen.tsx';
 import { InflationAnalysisCard } from './components/InflationAnalysisCard.tsx';
@@ -244,15 +245,19 @@ const App: React.FC = () => {
 
   return (
     <div 
-        className="min-h-screen flex justify-center text-gray-900 dark:text-white font-sans overflow-hidden relative transition-colors duration-700"
+        className="min-h-screen flex text-gray-900 dark:text-white font-sans overflow-hidden relative transition-colors duration-700 bg-brand-muted"
         style={{ background: `radial-gradient(circle at 50% -20%, var(--brand-highlight), var(--brand-muted) ${currentTheme.type === 'dark' ? '60%' : '80%'})` }}
     >
-      <div className="bg-noise opacity-[0.02]"></div>
-      <div className="w-full max-w-md relative flex flex-col h-screen bg-transparent z-10">
+      <div className="bg-noise opacity-[0.02] absolute inset-0 pointer-events-none"></div>
+      
+      {/* Desktop Sidebar */}
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} currentTheme={currentTheme} />
+
+      <div className="flex-1 flex flex-col h-screen relative z-10 w-full overflow-hidden">
         <Header 
           title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
           subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
-          showBackButton={['settings'].includes(activeTab)}
+          showBackButton={['settings'].includes(activeTab) && window.innerWidth < 768} // Show back button mostly on mobile for nested routes
           showAddButton={['dashboard', 'wallet', 'transactions'].includes(activeTab)}
           onAddClick={() => setIsAddModalOpen(true)}
           onBackClick={() => setActiveTab(previousTab)}
@@ -260,34 +265,71 @@ const App: React.FC = () => {
           onRefreshClick={refreshMarketData}
         />
         
-        <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 overscroll-contain">
-          {activeTab === 'dashboard' && (
-            <div className="space-y-2 pt-2 pb-4">
-              <SummaryCard data={summaryData} />
-              <div className="grid grid-cols-1 gap-3 px-1">
-                <EvolutionCard onClick={() => setModalOpen('evolution')} />
-                <DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} />
-                <IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} />
-                <InflationAnalysisCard onClick={() => setModalOpen('realPower')} />
-                <PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} />
+        <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 md:pb-6 overscroll-contain">
+          <div className="w-full md:px-6 md:max-w-7xl md:mx-auto">
+            
+            {activeTab === 'dashboard' && (
+              <div className="space-y-4 pt-2 pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-12 md:gap-6 gap-3 px-1 md:px-0">
+                  
+                  {/* Row 1 */}
+                  <div className="md:col-span-8">
+                    <SummaryCard data={summaryData} />
+                  </div>
+                  <div className="md:col-span-4">
+                     <PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} />
+                  </div>
+
+                  {/* Row 2 */}
+                  <div className="md:col-span-6 lg:col-span-3">
+                    <EvolutionCard onClick={() => setModalOpen('evolution')} />
+                  </div>
+                  <div className="md:col-span-6 lg:col-span-3">
+                    <DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} />
+                  </div>
+                  <div className="md:col-span-6 lg:col-span-3">
+                    <IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} />
+                  </div>
+                  <div className="md:col-span-6 lg:col-span-3">
+                    <InflationAnalysisCard onClick={() => setModalOpen('realPower')} />
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-          {activeTab === 'wallet' && <WalletView assets={assets} onAssetClick={setSelectedAsset} />}
-          {activeTab === 'transactions' && <TransactionsView transactions={transactions} />}
-          {activeTab === 'settings' && (
-            <SettingsView 
-              currentTheme={currentTheme} 
-              setCurrentTheme={setCurrentTheme} 
-              availableThemes={AVAILABLE_THEMES}
-              assets={assets}
-              transactions={transactions}
-              onImport={handleImportData}
-            />
-          )}
+            )}
+
+            {activeTab === 'wallet' && (
+              <div className="max-w-5xl mx-auto">
+                <WalletView assets={assets} onAssetClick={setSelectedAsset} />
+              </div>
+            )}
+            
+            {activeTab === 'transactions' && (
+              <div className="max-w-5xl mx-auto">
+                <TransactionsView transactions={transactions} />
+              </div>
+            )}
+            
+            {activeTab === 'settings' && (
+              <div className="max-w-4xl mx-auto">
+                <SettingsView 
+                  currentTheme={currentTheme} 
+                  setCurrentTheme={setCurrentTheme} 
+                  availableThemes={AVAILABLE_THEMES}
+                  assets={assets}
+                  transactions={transactions}
+                  onImport={handleImportData}
+                />
+              </div>
+            )}
+
+          </div>
         </main>
         
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        {/* Mobile Bottom Nav */}
+        <div className="md:hidden">
+          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
+        
         <AIAdvisor summary={summaryData} portfolio={portfolioData} />
 
         {isAddModalOpen && (
