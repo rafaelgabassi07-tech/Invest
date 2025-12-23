@@ -4,42 +4,46 @@
  * Documentation: https://brapi.dev/docs
  */
 
-// Helper to safely get environment variables without crashing in browser
-const getSafeEnv = (key: string): string => {
-  try {
+const BRAPI_BASE_URL = 'https://brapi.dev/api';
+
+// Função robusta para pegar o token, priorizando a variável de ambiente do Vite (Vercel)
+const getBrapiToken = (): string => {
+  // 1. Tenta pegar via Vite (Padrão Vercel/Moderno)
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BRAPI_TOKEN) {
     // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
-      return process.env[key];
-    }
-    return '';
-  } catch {
-    return '';
+    return import.meta.env.VITE_BRAPI_TOKEN;
   }
+
+  // 2. Tenta pegar via process.env (Legado/Node)
+  // @ts-ignore
+  if (typeof process !== 'undefined' && process.env && process.env.VITE_BRAPI_TOKEN) {
+    // @ts-ignore
+    return process.env.VITE_BRAPI_TOKEN;
+  }
+
+  // 3. Fallback: Token hardcoded fornecido
+  return 'qQubkDBNuT4NmqDc8MP7Hx';
 };
 
-const BRAPI_TOKEN = getSafeEnv('VITE_BRAPI_TOKEN') || 
-                    getSafeEnv('BRAPI_TOKEN_API') || 
-                    getSafeEnv('BRAPI_TOKEN') || 
-                    'qQubkDBNuT4NmqDc8MP7Hx'; 
-
-const BRAPI_BASE_URL = 'https://brapi.dev/api';
+const BRAPI_TOKEN = getBrapiToken();
 
 export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length) return [];
   
   if (!BRAPI_TOKEN) {
-    console.warn("[BRAPI] Alerta: Token ausente. Dados reais não serão carregados. Configure BRAPI_TOKEN no Vercel.");
+    console.warn("[BRAPI] Alerta: Token ausente. Dados reais não serão carregados.");
     return [];
   }
   
-  console.log(`[BRAPI] Solicitando cotações: ${tickers.join(', ')}`);
+  console.log(`[BRAPI] Solicitando cotações via token: ${BRAPI_TOKEN.substring(0, 4)}...`);
   
   try {
     const list = tickers.join(',');
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${list}?token=${BRAPI_TOKEN}`);
     
     if (response.status === 401) {
-        console.error("[BRAPI] Erro 401: Token inválido ou expirado. Verifique sua chave em brapi.dev.");
+        console.error("[BRAPI] Erro 401: Token inválido ou expirado. Verifique sua chave.");
         return [];
     }
     
@@ -48,7 +52,6 @@ export const fetchTickersData = async (tickers: string[]) => {
     }
     
     const data = await response.json();
-    console.log("[BRAPI] Dados de mercado atualizados com sucesso.");
     return data.results || [];
   } catch (error) {
     console.error("[BRAPI] Falha crítica na busca de dados:", error);
