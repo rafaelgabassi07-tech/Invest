@@ -1,12 +1,13 @@
+
 import React, { useState, useMemo } from 'react';
-import { Asset } from '../types';
-import { AssetCard } from './AssetCard';
+import { Asset } from '../types.ts';
+import { AssetCard } from './AssetCard.tsx';
 import { Wallet as WalletIcon, ArrowDown, ArrowUp } from 'lucide-react';
 
 interface WalletViewProps {
   assets: Asset[];
   onAssetClick: (asset: Asset) => void;
-  onEvolutionClick?: () => void; // Optional kept for compatibility, but unused in rendering
+  onEvolutionClick?: () => void; 
 }
 
 type SortOption = 'value' | 'name' | 'change';
@@ -16,6 +17,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ assets, onAssetClick }) 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const sortedAssets = useMemo(() => {
+    if (!assets) return [];
     return [...assets].sort((a, b) => {
       let comparison = 0;
       switch (sortBy) {
@@ -33,15 +35,17 @@ export const WalletView: React.FC<WalletViewProps> = ({ assets, onAssetClick }) 
     });
   }, [assets, sortBy, sortOrder]);
 
-  const totalWalletValue = assets.reduce((acc, curr) => acc + curr.totalValue, 0);
-  const weightedDailyChange = assets.reduce((acc, curr) => acc + (curr.dailyChange * curr.totalValue), 0) / totalWalletValue;
+  const totalWalletValue = assets?.reduce((acc, curr) => acc + (curr.totalValue || 0), 0) || 0;
+  const weightedDailyChange = totalWalletValue > 0 
+    ? assets.reduce((acc, curr) => acc + ((curr.dailyChange || 0) * (curr.totalValue || 0)), 0) / totalWalletValue 
+    : 0;
 
   const toggleSort = (option: SortOption) => {
     if (sortBy === option) {
       setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
     } else {
       setSortBy(option);
-      setSortOrder('desc'); // Default to desc for new metrics
+      setSortOrder('desc');
     }
   };
 
@@ -66,7 +70,6 @@ export const WalletView: React.FC<WalletViewProps> = ({ assets, onAssetClick }) 
 
   return (
     <div className="pb-32">
-       {/* Hero Summary Header - Styled to match SummaryCard with Glass */}
        <div className="px-6 pt-2 pb-3 relative z-10 transition-colors">
          <div className="bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl p-7 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
@@ -93,12 +96,11 @@ export const WalletView: React.FC<WalletViewProps> = ({ assets, onAssetClick }) 
                     {weightedDailyChange >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
                     <span className="text-xs font-bold">{Math.abs(weightedDailyChange).toFixed(2)}% hoje</span>
                  </div>
-                 <span className="text-gray-500 text-[10px] font-medium bg-white/40 dark:bg-[#2c2c2e]/40 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/20 dark:border-white/5">{assets.length} ativos</span>
+                 <span className="text-gray-500 text-[10px] font-medium bg-white/40 dark:bg-[#2c2c2e]/40 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/20 dark:border-white/5">{assets?.length || 0} ativos</span>
             </div>
          </div>
        </div>
 
-       {/* Sticky Sort Bar */}
        <div className="sticky top-0 z-20 bg-white/60 dark:bg-[#050505]/60 backdrop-blur-xl border-b border-white/40 dark:border-white/5 py-3 px-6 mb-3 flex items-center gap-3 overflow-x-auto custom-scrollbar transition-colors">
           <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider mr-1">Ordenar:</span>
           <SortButton option="value" label="Valor" />

@@ -1,29 +1,28 @@
 
 import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback } from 'react';
-import { Header } from './components/Header';
-import { SummaryCard } from './components/SummaryCard';
-import { PortfolioChart } from './components/PortfolioChart';
-import { BottomNav } from './components/BottomNav';
-import { WalletView } from './components/WalletView';
-import { SplashScreen } from './components/SplashScreen';
-import { InflationAnalysisCard } from './components/InflationAnalysisCard';
-import { DividendCalendarCard } from './components/DividendCalendarCard';
-import { IncomeReportCard } from './components/IncomeReportCard';
-import { EvolutionCard } from './components/EvolutionCard'; 
-import { TransactionsView } from './components/TransactionsView';
-import { SettingsView } from './components/SettingsView';
-import { AIAdvisor } from './components/AIAdvisor';
-import { Asset, Transaction, AppTheme } from './types';
-import { fetchTickersData } from './services/brapiService';
-import { AVAILABLE_THEMES } from './services/themeService';
+import { Header } from './components/Header.tsx';
+import { SummaryCard } from './components/SummaryCard.tsx';
+import { PortfolioChart } from './components/PortfolioChart.tsx';
+import { BottomNav } from './components/BottomNav.tsx';
+import { WalletView } from './components/WalletView.tsx';
+import { SplashScreen } from './components/SplashScreen.tsx';
+import { InflationAnalysisCard } from './components/InflationAnalysisCard.tsx';
+import { DividendCalendarCard } from './components/DividendCalendarCard.tsx';
+import { IncomeReportCard } from './components/IncomeReportCard.tsx';
+import { EvolutionCard } from './components/EvolutionCard.tsx'; 
+import { TransactionsView } from './components/TransactionsView.tsx';
+import { SettingsView } from './components/SettingsView.tsx';
+import { AIAdvisor } from './components/AIAdvisor.tsx';
+import { Asset, Transaction, AppTheme } from './types.ts';
+import { fetchTickersData } from './services/brapiService.ts';
+import { AVAILABLE_THEMES } from './services/themeService.ts';
 
-const AssetDetailModal = lazy(() => import('./components/AssetDetailModal').then(m => ({ default: m.AssetDetailModal })));
-const DividendCalendarModal = lazy(() => import('./components/DividendCalendarModal').then(m => ({ default: m.DividendCalendarModal })));
-const IncomeReportModal = lazy(() => import('./components/IncomeReportModal').then(m => ({ default: m.IncomeReportModal })));
-const RealPowerModal = lazy(() => import('./components/RealPowerModal').then(m => ({ default: m.RealPowerModal })));
-const EvolutionModal = lazy(() => import('./components/EvolutionModal').then(m => ({ default: m.EvolutionModal })));
-const PortfolioModal = lazy(() => import('./components/PortfolioModal').then(m => ({ default: m.PortfolioModal })));
-const AddTransactionModal = lazy(() => import('./components/AddTransactionModal').then(m => ({ default: m.AddTransactionModal })));
+const AssetDetailModal = lazy(() => import('./components/AssetDetailModal.tsx').then(m => ({ default: m.AssetDetailModal })));
+const DividendCalendarModal = lazy(() => import('./components/DividendCalendarModal.tsx').then(m => ({ default: m.DividendCalendarModal })));
+const IncomeReportModal = lazy(() => import('./components/IncomeReportModal.tsx').then(m => ({ default: m.IncomeReportModal })));
+const RealPowerModal = lazy(() => import('./components/RealPowerModal.tsx').then(m => ({ default: m.RealPowerModal })));
+const EvolutionModal = lazy(() => import('./components/EvolutionModal.tsx').then(m => ({ default: m.EvolutionModal })));
+const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then(m => ({ default: m.PortfolioModal })));
 
 const INITIAL_ASSETS: Asset[] = [
   { id: '1', ticker: 'SNAG11', shortName: 'SNAG', companyName: 'Suno Asset', assetType: 'FIAGRO', segment: 'Crédito Agrícola', allocationType: 'CRAs', quantity: 25, currentPrice: 10.86, totalValue: 271.50, dailyChange: 0, averagePrice: 9.69, totalCost: 242.37, lastDividend: 0.13, lastDividendDate: '23/12/2025', dy12m: 12.73, color: '#ea580c', pvp: 1.05, vp: 10.34, liquidity: '4.5M', netWorth: '627.8M', vacancy: 0.0, cnpj: '30.345.123/0001-99', administrator: 'Suno Asset', assetsCount: 34 },
@@ -38,7 +37,6 @@ const App: React.FC = () => {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   
-  // Safe Initialization from LocalStorage
   const [assets, setAssets] = useState<Asset[]>(() => {
     try {
       const saved = localStorage.getItem('invest_assets');
@@ -46,7 +44,6 @@ const App: React.FC = () => {
       const parsed = JSON.parse(saved);
       return Array.isArray(parsed) ? parsed : INITIAL_ASSETS;
     } catch (e) {
-      console.error("[App] Erro ao carregar ativos:", e);
       return INITIAL_ASSETS;
     }
   });
@@ -58,7 +55,6 @@ const App: React.FC = () => {
       const parsed = JSON.parse(saved);
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
-      console.error("[App] Erro ao carregar transações:", e);
       return [];
     }
   });
@@ -67,13 +63,13 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('invest_theme');
       if (!saved) return AVAILABLE_THEMES[0];
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      return parsed && parsed.id ? parsed : AVAILABLE_THEMES[0];
     } catch (e) {
       return AVAILABLE_THEMES[0];
     }
   });
 
-  // Auto-Persist
   useEffect(() => {
     localStorage.setItem('invest_assets', JSON.stringify(assets));
     localStorage.setItem('invest_transactions', JSON.stringify(transactions));
@@ -83,26 +79,26 @@ const App: React.FC = () => {
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
   const refreshMarketData = useCallback(async () => {
-    if (isRefreshing || assets.length === 0) return;
+    if (isRefreshing || !assets || assets.length === 0) return;
     setIsRefreshing(true);
     try {
         const tickers = assets.map(a => a.ticker);
         const liveData = await fetchTickersData(tickers);
         
         if (liveData && liveData.length > 0) {
-        setAssets(prev => prev.map(asset => {
-            const live = liveData.find((l: any) => l.symbol === asset.ticker);
-            return live ? {
-            ...asset,
-            currentPrice: live.regularMarketPrice,
-            totalValue: live.regularMarketPrice * asset.quantity,
-            dailyChange: live.regularMarketChangePercent || 0,
-            companyName: live.longName || asset.companyName
-            } : asset;
-        }));
+          setAssets(prev => prev.map(asset => {
+              const live = liveData.find((l: any) => l.symbol === asset.ticker);
+              return live ? {
+                ...asset,
+                currentPrice: live.regularMarketPrice,
+                totalValue: live.regularMarketPrice * asset.quantity,
+                dailyChange: live.regularMarketChangePercent || 0,
+                companyName: live.longName || asset.companyName
+              } : asset;
+          }));
         }
     } catch (err) {
-        console.error("[App] Erro ao atualizar mercado:", err);
+        console.error("[App] Erro de mercado:", err);
     } finally {
         setIsRefreshing(false);
     }
@@ -116,12 +112,13 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isAppLoading) refreshMarketData();
-  }, [isAppLoading]);
+  }, [isAppLoading, refreshMarketData]);
 
   useEffect(() => {
     const root = document.documentElement;
+    if (!currentTheme || !currentTheme.colors) return;
+    
     currentTheme.type === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
-
     const styles = {
       '--brand-primary': currentTheme.colors.primary,
       '--brand-secondary': currentTheme.colors.secondary,
@@ -134,12 +131,14 @@ const App: React.FC = () => {
 
   const summaryData = useMemo(() => {
     let balance = 0, cost = 0, projected = 0, weightedChange = 0;
-    assets.forEach(a => {
-        balance += (a.totalValue || 0);
-        cost += (a.totalCost || 0);
-        projected += ((a.lastDividend || 0) * (a.quantity || 0) * 12);
-        weightedChange += ((a.dailyChange || 0) * (a.totalValue || 0));
-    });
+    if (Array.isArray(assets)) {
+      assets.forEach(a => {
+          balance += (a.totalValue || 0);
+          cost += (a.totalCost || 0);
+          projected += ((a.lastDividend || 0) * (a.quantity || 0) * 12);
+          weightedChange += ((a.dailyChange || 0) * (a.totalValue || 0));
+      });
+    }
     const weightedAvgChange = balance > 0 ? weightedChange / balance : 0;
     return {
       totalBalance: balance, totalInvested: cost, yieldOnCost: cost > 0 ? (projected / cost) * 100 : 0,
@@ -150,7 +149,7 @@ const App: React.FC = () => {
 
   const portfolioData = useMemo(() => {
     const total = summaryData.totalBalance;
-    if (total === 0) return [];
+    if (total === 0 || !Array.isArray(assets)) return [];
     const groups: Record<string, number> = {};
     assets.forEach(a => { groups[a.assetType] = (groups[a.assetType] || 0) + a.totalValue; });
     return Object.entries(groups).map(([name, value], index) => ({
@@ -161,6 +160,15 @@ const App: React.FC = () => {
 
   if (isAppLoading) return <SplashScreen onComplete={handleSplashComplete} />;
 
+  const getHeaderTitle = () => {
+    switch(activeTab) {
+      case 'dashboard': return "Invest";
+      case 'wallet': return "Carteira";
+      case 'transactions': return "Extrato";
+      default: return "Ajustes";
+    }
+  };
+
   return (
     <div 
         className="min-h-screen flex justify-center text-gray-900 dark:text-white font-sans overflow-hidden relative transition-colors duration-700"
@@ -169,7 +177,7 @@ const App: React.FC = () => {
       <div className="bg-noise opacity-[0.02]"></div>
       <div className="w-full max-w-md relative flex flex-col h-screen bg-transparent z-10">
         <Header 
-          title={activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
+          title={getHeaderTitle()} 
           subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
           showBackButton={['settings'].includes(activeTab)}
           onBackClick={() => setActiveTab(previousTab)}
