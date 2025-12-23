@@ -29,6 +29,9 @@ const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then
 
 const INITIAL_ASSETS: Asset[] = [];
 
+// Paleta de cores para o gráfico da dashboard
+const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'];
+
 const App: React.FC = () => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -295,13 +298,22 @@ const App: React.FC = () => {
   const portfolioData = useMemo(() => {
     const total = summaryData.totalBalance;
     if (total === 0) return [];
+    
+    // Agrupa por Tipo de Ativo
     const groups: Record<string, number> = {};
-    assets.forEach(a => { groups[a.assetType] = (groups[a.assetType] || 0) + a.totalValue; });
+    assets.forEach(a => { 
+        const type = a.assetType || 'Outros';
+        groups[type] = (groups[type] || 0) + a.totalValue; 
+    });
+    
     return Object.entries(groups).map(([name, value], index) => ({
-        id: name, name, percentage: parseFloat(((value / total) * 100).toFixed(1)),
-        color: index === 0 ? currentTheme.colors.primary : currentTheme.colors.accent
-    }));
-  }, [assets, summaryData.totalBalance, currentTheme]);
+        id: name, 
+        name, 
+        percentage: parseFloat(((value / total) * 100).toFixed(1)),
+        // Usa a paleta de cores global rotativa
+        color: CHART_COLORS[index % CHART_COLORS.length]
+    })).sort((a, b) => b.percentage - a.percentage); // Ordena do maior para o menor
+  }, [assets, summaryData.totalBalance]);
 
   if (isAppLoading) return <SplashScreen onComplete={handleSplashComplete} />;
 

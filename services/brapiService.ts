@@ -6,7 +6,7 @@
 import { logApiRequest } from './telemetryService.ts';
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
-// Reduzido cache em memória para forçar atualização mais frequente na UI
+// Cache de curta duração para evitar spam na API, mas garantir dados frescos
 const CACHE_DURATION = 2 * 60 * 1000; 
 
 // Cache Granular
@@ -23,7 +23,7 @@ export const getBrapiToken = (): string => {
 
 const BRAPI_TOKEN = getBrapiToken();
 
-// Função para buscar dados históricos (mantida individual)
+// Função para buscar dados históricos
 export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo') => {
   if (!BRAPI_TOKEN) return [];
   const cacheKey = `${ticker}_history_${range}_${interval}`;
@@ -56,12 +56,14 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
   }
 };
 
-// Nova implementação usando Batch Request (vários tickers em uma única chamada)
+// Implementação robusta de Batch Request
 export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length || !BRAPI_TOKEN) return [];
   
-  // Remove duplicatas e cria string separada por vírgulas (ex: PETR4,VALE3,ITUB4)
-  const uniqueTickers = [...new Set(tickers)];
+  // Limpa e prepara tickers
+  const uniqueTickers = [...new Set(tickers)].filter(t => t && t.length > 0);
+  if (uniqueTickers.length === 0) return [];
+
   const tickersString = uniqueTickers.join(',');
   const ts = new Date().getTime();
 
@@ -69,7 +71,10 @@ export const fetchTickersData = async (tickers: string[]) => {
     logApiRequest('brapi');
     
     // Chamada única para múltiplos ativos
-    const response = await fetch(`${BRAPI_BASE_URL}/quote/${tickersString}?token=${BRAPI_TOKEN}&ts=${ts}`, {
+    // Importante: encodeURIComponent é usado para garantir segurança da URL
+    const url = `${BRAPI_BASE_URL}/quote/${encodeURIComponent(tickersString)}?token=${BRAPI_TOKEN}&ts=${ts}`;
+    
+    const response = await fetch(url, {
       cache: 'no-store',
       headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -79,7 +84,7 @@ export const fetchTickersData = async (tickers: string[]) => {
     });
 
     if (!response.ok) {
-        console.warn('[BRAPI] Falha ao buscar cotações em lote');
+        console.warn(`[BRAPI] Erro HTTP ${response.status} ao buscar cotações.`);
         return [];
     }
 
@@ -100,3 +105,4 @@ export const fetchTickersData = async (tickers: string[]) => {
     return [];
   }
 };
+    

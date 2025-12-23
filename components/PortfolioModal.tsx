@@ -15,8 +15,8 @@ type ViewMode = 'assets' | 'segments' | 'allocation';
 
 const COLORS = {
     assets: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1'],
-    segments: ['#f59e0b', '#ec4899', '#3b82f6', '#10b981'],
-    allocation: ['#8b5cf6', '#10b981', '#f97316', '#3b82f6']
+    segments: ['#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#14b8a6', '#f43f5e'],
+    allocation: ['#8b5cf6', '#10b981', '#f97316', '#3b82f6', '#06b6d4', '#d946ef']
 };
 
 const renderActiveShape = (props: any) => {
@@ -60,15 +60,21 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
   const [activeIndex, setActiveIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('segments');
 
+  // Recalcula totalValue se vier 0 ou undefined para evitar divisão por zero
+  const safeTotalValue = useMemo(() => {
+    return totalValue > 0 ? totalValue : assets.reduce((acc, a) => acc + a.totalValue, 0);
+  }, [totalValue, assets]);
+
   const chartData = useMemo(() => {
     setActiveIndex(0);
+    const finalTotal = safeTotalValue > 0 ? safeTotalValue : 1; // Evita divisão por zero
 
     if (viewMode === 'assets') {
         return assets.map((a, idx) => ({
             id: a.id,
             name: a.ticker,
             value: a.totalValue,
-            percentage: parseFloat(((a.totalValue / totalValue) * 100).toFixed(1)),
+            percentage: parseFloat(((a.totalValue / finalTotal) * 100).toFixed(1)),
             color: a.color || COLORS.assets[idx % COLORS.assets.length]
         })).sort((a, b) => b.value - a.value);
     } 
@@ -76,13 +82,14 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
     if (viewMode === 'segments') {
         const grouped: Record<string, number> = {};
         assets.forEach(a => {
-            grouped[a.segment] = (grouped[a.segment] || 0) + a.totalValue;
+            const segment = a.segment || 'Outros'; // Fallback para segmentos indefinidos
+            grouped[segment] = (grouped[segment] || 0) + a.totalValue;
         });
         return Object.keys(grouped).map((key, idx) => ({
             id: key,
             name: key,
             value: grouped[key],
-            percentage: parseFloat(((grouped[key] / totalValue) * 100).toFixed(1)),
+            percentage: parseFloat(((grouped[key] / finalTotal) * 100).toFixed(1)),
             color: COLORS.segments[idx % COLORS.segments.length]
         })).sort((a, b) => b.value - a.value);
     }
@@ -90,19 +97,20 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
     if (viewMode === 'allocation') {
         const grouped: Record<string, number> = {};
         assets.forEach(a => {
-            grouped[a.allocationType] = (grouped[a.allocationType] || 0) + a.totalValue;
+            const alloc = a.allocationType || a.assetType || 'Outros'; // Fallback em cascata
+            grouped[alloc] = (grouped[alloc] || 0) + a.totalValue;
         });
         return Object.keys(grouped).map((key, idx) => ({
             id: key,
             name: key,
             value: grouped[key],
-            percentage: parseFloat(((grouped[key] / totalValue) * 100).toFixed(1)),
+            percentage: parseFloat(((grouped[key] / finalTotal) * 100).toFixed(1)),
             color: COLORS.allocation[idx % COLORS.allocation.length]
         })).sort((a, b) => b.value - a.value);
     }
     
     return [];
-  }, [viewMode, assets, totalValue]);
+  }, [viewMode, assets, safeTotalValue]);
 
   const onPieEnter = (_: any, index: number) => {
     setActiveIndex(index);
@@ -159,29 +167,35 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
                         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-gray-50/50 dark:from-white/[0.02] to-transparent pointer-events-none"></div>
                         
                         <div className="w-full h-full relative z-10 flex-1 min-h-[400px] flex items-center justify-center">
-                            <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                activeIndex={activeIndex}
-                                activeShape={renderActiveShape}
-                                data={chartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={100}
-                                outerRadius={140}
-                                paddingAngle={4}
-                                dataKey="value"
-                                onMouseEnter={onPieEnter}
-                                onClick={onPieEnter}
-                                animationDuration={800}
-                                stroke="none"
-                                >
-                                {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                ))}
-                                </Pie>
-                            </PieChart>
-                            </ResponsiveContainer>
+                            {chartData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                    activeIndex={activeIndex}
+                                    activeShape={renderActiveShape}
+                                    data={chartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={100}
+                                    outerRadius={140}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                    onMouseEnter={onPieEnter}
+                                    onClick={onPieEnter}
+                                    animationDuration={800}
+                                    stroke="none"
+                                    >
+                                    {chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                    ))}
+                                    </Pie>
+                                </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-center opacity-50">
+                                    <p className="text-gray-500 font-bold">Sem dados para exibir.</p>
+                                </div>
+                            )}
                         </div>
                         
                         <div className="mt-4 flex items-center gap-2 text-gray-400 bg-gray-50 dark:bg-[#2c2c2e] px-4 py-2 rounded-full border border-gray-200 dark:border-white/5">

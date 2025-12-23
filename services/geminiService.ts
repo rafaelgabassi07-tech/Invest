@@ -13,12 +13,12 @@ export const getFinancialAdvice = async (
     // REGISTRA CHAMADA REAL
     logApiRequest('gemini');
     
-    // Obtém chave do ambiente (injetada pelo Vite define)
+    // Obtém chave EXCLUSIVAMENTE das variáveis de ambiente
     const apiKey = process.env.API_KEY;
     
     if (!apiKey) {
         console.warn("[Gemini] API Key não encontrada nas variáveis de ambiente.");
-        return "⚠️ Configure a API Key do Google Gemini nas variáveis de ambiente (API_KEY) para usar este recurso.";
+        return "⚠️ A chave de API do Gemini não foi detectada. Configure a variável de ambiente 'API_KEY' para ativar o assistente.";
     }
 
     const ai = new GoogleGenAI({ apiKey: apiKey });
@@ -69,3 +69,4 @@ export const getFinancialAdvice = async (
     return "Ocorreu um erro ao conectar com a Inteligência Artificial. Verifique sua conexão e sua chave API.";
   }
 };
+    

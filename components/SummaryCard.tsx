@@ -8,14 +8,18 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
   const lastValue = useRef(data.totalBalance);
 
   useEffect(() => {
-    if (Math.abs(data.totalBalance - lastValue.current) < 1) {
+    const diff = Math.abs(data.totalBalance - lastValue.current);
+    
+    // Se a diferença for muito pequena ou zero, atualiza direto sem animação
+    if (diff < 0.01) {
       setDisplayBalance(data.totalBalance);
+      lastValue.current = data.totalBalance;
       return;
     }
 
     let startTimestamp: number | null = null;
     let animationFrameId: number;
-    const duration = 800;
+    const duration = 1000; // Duração um pouco maior para suavidade
     const startValue = lastValue.current;
     const endValue = data.totalBalance;
 
@@ -23,13 +27,17 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
       
-      const current = startValue + (endValue - startValue) * progress;
+      // Easing function (easeOutQuart) para movimento mais natural
+      const ease = 1 - Math.pow(1 - progress, 4);
+      
+      const current = startValue + (endValue - startValue) * ease;
       setDisplayBalance(current);
 
       if (progress < 1) {
         animationFrameId = window.requestAnimationFrame(step);
       } else {
         lastValue.current = endValue;
+        setDisplayBalance(endValue); // Garante valor final exato
       }
     };
 
@@ -101,3 +109,4 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
     </div>
   );
 };
+    
