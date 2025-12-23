@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, Share2, Layers, Info, CheckCircle2, Ticket, LayoutGrid, Building2 } from 'lucide-react';
+import { ChevronLeft, Share2, Layers, Info, CheckCircle2, Ticket, LayoutGrid, Building2, X, PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { Asset, PortfolioItem } from '../types';
 
@@ -23,21 +23,21 @@ const renderActiveShape = (props: any) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload } = props;
   return (
     <g>
-      <text x={cx} y={cy - 8} dy={8} textAnchor="middle" fill={fill} className="text-2xl font-bold drop-shadow-sm">
+      <text x={cx} y={cy - 10} dy={8} textAnchor="middle" fill={fill} className="text-3xl font-bold drop-shadow-sm">
         {payload.percentage}%
       </text>
-      <text x={cx} y={cy + 16} dy={8} textAnchor="middle" fill="#9ca3af" className="text-[10px] font-bold uppercase tracking-widest">
-        {payload.name.length > 10 ? payload.name.substring(0, 8) + '..' : payload.name}
+      <text x={cx} y={cy + 20} dy={8} textAnchor="middle" fill="#9ca3af" className="text-xs font-bold uppercase tracking-widest">
+        {payload.name.length > 12 ? payload.name.substring(0, 10) + '..' : payload.name}
       </text>
       <Sector
         cx={cx}
         cy={cy}
         innerRadius={innerRadius}
-        outerRadius={outerRadius + 8}
+        outerRadius={outerRadius + 10}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
-        cornerRadius={6}
+        cornerRadius={8}
         stroke="none"
       />
       <Sector
@@ -45,8 +45,8 @@ const renderActiveShape = (props: any) => {
         cy={cy}
         startAngle={startAngle}
         endAngle={endAngle}
-        innerRadius={innerRadius - 10}
-        outerRadius={innerRadius - 6}
+        innerRadius={innerRadius - 12}
+        outerRadius={innerRadius - 8}
         fill={fill}
         fillOpacity={0.2}
         cornerRadius={4}
@@ -109,155 +109,155 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-auto">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose} />
-      
-      <div className="w-full h-full md:w-full md:max-w-md md:h-[85vh] flex flex-col bg-gray-50 dark:bg-[#0d0d0d] relative z-10 md:rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up transition-colors md:border border-gray-200 dark:border-white/5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
+      <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
         
         {/* Header */}
         <div className="px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
-          <button 
-            onClick={onClose}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90"
-          >
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">Estrutura</h1>
-          <button className="w-10 h-10 rounded-full flex items-center justify-center text-amber-500 hover:bg-amber-50 dark:hover:bg-white/5 transition-all active:scale-90">
-            <Share2 size={20} />
+          <div className="flex flex-col items-center">
+             <h1 className="text-lg font-bold text-gray-900 dark:text-white">Estrutura da Carteira</h1>
+             <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wide">Alocação e Risco</p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+            <X size={24} />
           </button>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="px-6 mb-4 mt-6">
-            <div className="flex p-1 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm">
-                {[
-                    { id: 'assets', label: 'Ativos', icon: Ticket },
-                    { id: 'segments', label: 'Segmentos', icon: LayoutGrid },
-                    { id: 'allocation', label: 'Alocação', icon: Building2 }
-                ].map((tab) => (
-                    <button 
-                        key={tab.id}
-                        onClick={() => setViewMode(tab.id as ViewMode)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-bold rounded-xl transition-all duration-300 uppercase ${
-                            viewMode === tab.id 
-                            ? 'bg-gray-100 dark:bg-[#2c2c2e] text-gray-900 dark:text-white shadow-md border border-gray-200 dark:border-white/5' 
-                            : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                        }`}
-                    >
-                        <tab.icon size={12} />
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 px-6 pt-2 pb-8 overflow-y-auto custom-scrollbar">
-          
-          {/* Main Chart Card */}
-          <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 mb-6 border border-gray-200 dark:border-white/5 relative overflow-hidden shadow-2xl animate-pop-in group">
-             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-gray-50/50 dark:from-white/[0.02] to-transparent pointer-events-none"></div>
-             
-             <div className="h-64 w-full relative z-10">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      activeIndex={activeIndex}
-                      activeShape={renderActiveShape}
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={75}
-                      outerRadius={95}
-                      paddingAngle={4}
-                      dataKey="value"
-                      onMouseEnter={onPieEnter}
-                      onClick={onPieEnter}
-                      animationDuration={800}
-                      stroke="none"
-                      activeDot={false}
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.color} 
-                            stroke="none"
-                        />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-             </div>
-             
-             <div className="flex justify-center mt-2">
-                <p className="text-gray-500 text-[10px] flex items-center gap-1.5 bg-gray-100 dark:bg-[#2c2c2e] px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/5">
-                   <Info size={12} /> Toque no gráfico para detalhes
-                </p>
-             </div>
-          </div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="max-w-7xl mx-auto px-6 py-8 w-full h-full flex flex-col lg:flex-row gap-8">
+                
+                {/* Left Column: Controls & Chart */}
+                <div className="lg:w-1/2 flex flex-col gap-6">
+                    {/* View Switcher */}
+                    <div className="flex p-1.5 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-gray-200 dark:border-white/5 shadow-md">
+                        {[
+                            { id: 'assets', label: 'Por Ativo', icon: Ticket },
+                            { id: 'segments', label: 'Por Segmento', icon: LayoutGrid },
+                            { id: 'allocation', label: 'Classe de Ativo', icon: Building2 }
+                        ].map((tab) => (
+                            <button 
+                                key={tab.id}
+                                onClick={() => setViewMode(tab.id as ViewMode)}
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold rounded-xl transition-all duration-300 uppercase ${
+                                    viewMode === tab.id 
+                                    ? 'bg-blue-600 text-white shadow-lg' 
+                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
+                                }`}
+                            >
+                                <tab.icon size={16} />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
 
-          {/* Diversification Score */}
-          <div className="mb-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
-             <div className="flex justify-between items-end mb-2 px-2">
-                <h3 className="text-gray-900 dark:text-white font-bold text-sm">Diversificação</h3>
-                <span className="text-emerald-500 font-bold text-sm bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">Excelente (92/100)</span>
-             </div>
-             <div className="bg-white dark:bg-[#1c1c1e] p-1.5 rounded-full flex gap-1 border border-gray-200 dark:border-white/5 shadow-inner">
-                <div className="h-2.5 flex-1 rounded-l-full bg-emerald-500 animate-pulse-fast"></div>
-                <div className="h-2.5 flex-1 bg-emerald-500 animate-pulse-fast" style={{ animationDelay: '0.1s' }}></div>
-                <div className="h-2.5 flex-1 bg-emerald-500 animate-pulse-fast" style={{ animationDelay: '0.2s' }}></div>
-                <div className="h-2.5 flex-1 rounded-r-full bg-gray-200 dark:bg-[#2c2c2e]"></div>
-             </div>
-          </div>
+                    {/* Chart Card */}
+                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 relative overflow-hidden shadow-xl flex-1 min-h-[500px] flex flex-col justify-center items-center">
+                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-gray-50/50 dark:from-white/[0.02] to-transparent pointer-events-none"></div>
+                        
+                        <div className="w-full h-full relative z-10 flex-1 min-h-[400px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                activeIndex={activeIndex}
+                                activeShape={renderActiveShape}
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={100}
+                                outerRadius={140}
+                                paddingAngle={4}
+                                dataKey="value"
+                                onMouseEnter={onPieEnter}
+                                onClick={onPieEnter}
+                                animationDuration={800}
+                                stroke="none"
+                                >
+                                {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                ))}
+                                </Pie>
+                            </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        
+                        <div className="mt-4 flex items-center gap-2 text-gray-400 bg-gray-50 dark:bg-[#2c2c2e] px-4 py-2 rounded-full border border-gray-200 dark:border-white/5">
+                            <Info size={14} /> 
+                            <span className="text-xs font-medium">Passe o mouse ou toque para detalhes</span>
+                        </div>
+                    </div>
+                </div>
 
-          {/* Breakdown List */}
-          <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-4 px-2">
-                {viewMode === 'assets' ? 'Meus Ativos' : viewMode === 'segments' ? 'Por Segmento' : 'Alocação de Capital'}
-            </h3>
-            
-            <div className="space-y-3">
-                {chartData.map((item, index) => {
-                    return (
-                        <div 
-                            key={item.id} 
-                            onClick={() => setActiveIndex(index)}
-                            style={{ animationDelay: `${index * 80}ms` }}
-                            className={`p-4 rounded-[1.5rem] border flex justify-between items-center transition-all cursor-pointer animate-entry opacity-0 fill-mode-forwards active:scale-[0.98] ${
-                                activeIndex === index 
-                                ? 'bg-gray-100 dark:bg-[#2c2c2e] border-brand-500/30 ring-1 ring-brand-500/20' 
-                                : 'bg-white dark:bg-[#1c1c1e] border-gray-200 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-[#262629]'
-                            }`}
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-bold shadow-md" style={{ backgroundColor: item.color }}>
-                                    <Layers size={18} />
-                                </div>
-                                <div>
-                                    <h4 className="text-gray-900 dark:text-white font-bold text-sm">{item.name}</h4>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <div className="h-1.5 w-16 bg-gray-200 dark:bg-[#0d0d0d] rounded-full overflow-hidden">
-                                            <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percentage}%`, backgroundColor: item.color }}></div>
+                {/* Right Column: List & Stats */}
+                <div className="lg:w-1/2 flex flex-col gap-6">
+                    {/* Score Card */}
+                    <div className="bg-white dark:bg-[#1c1c1e] p-8 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+                                <PieChartIcon className="text-blue-500" /> Índice de Diversificação
+                            </h3>
+                            <span className="text-emerald-500 font-bold text-sm bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">Excelente (92/100)</span>
+                        </div>
+                        <div className="w-full bg-gray-100 dark:bg-[#2c2c2e] rounded-full h-4 overflow-hidden flex gap-1">
+                            <div className="bg-blue-500 h-full w-[40%]"></div>
+                            <div className="bg-emerald-500 h-full w-[30%]"></div>
+                            <div className="bg-amber-500 h-full w-[20%]"></div>
+                            <div className="bg-indigo-500 h-full w-[10%]"></div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-3">
+                            Sua carteira está bem distribuída entre diferentes classes, reduzindo riscos específicos.
+                        </p>
+                    </div>
+
+                    {/* Breakdown List */}
+                    <div className="flex-1 bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex flex-col overflow-hidden h-[500px] lg:h-auto">
+                        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-6 px-2">
+                            Detalhamento por {viewMode === 'assets' ? 'Ativo' : viewMode === 'segments' ? 'Segmento' : 'Classe'}
+                        </h3>
+                        
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+                            {chartData.map((item, index) => (
+                                <div 
+                                    key={item.id} 
+                                    onMouseEnter={() => setActiveIndex(index)}
+                                    className={`p-5 rounded-2xl border flex justify-between items-center transition-all cursor-pointer hover:scale-[1.01] ${
+                                        activeIndex === index 
+                                        ? 'bg-blue-50/80 dark:bg-[#2c2c2e] border-blue-500/30 ring-1 ring-blue-500/20 shadow-md' 
+                                        : 'bg-gray-50 dark:bg-[#2c2c2e]/40 border-gray-100 dark:border-white/5'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-md" style={{ backgroundColor: item.color }}>
+                                            <Layers size={20} />
                                         </div>
-                                        <span className="text-gray-500 text-[10px] font-bold">{item.percentage}%</span>
+                                        <div>
+                                            <h4 className="text-gray-900 dark:text-white font-bold text-base">{item.name}</h4>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <div className="h-2 w-24 bg-gray-200 dark:bg-[#0d0d0d] rounded-full overflow-hidden">
+                                                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percentage}%`, backgroundColor: item.color }}></div>
+                                                </div>
+                                                <span className="text-gray-500 text-xs font-bold">{item.percentage}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-right">
+                                        <p className="text-gray-900 dark:text-white font-bold text-base">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                        <div className="flex items-center justify-end gap-1 text-emerald-500 mt-1">
+                                            <CheckCircle2 size={12} />
+                                            <span className="text-[10px] font-bold uppercase">Balanceado</span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="text-right">
-                                <p className="text-gray-900 dark:text-white font-bold text-sm">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                <div className="flex items-center justify-end gap-1 text-emerald-500 mt-0.5">
-                                    <CheckCircle2 size={10} />
-                                    <span className="text-[9px] font-bold">OK</span>
-                                </div>
-                            </div>
+                            ))}
                         </div>
-                    );
-                })}
-            </div>
-          </div>
+                    </div>
+                </div>
 
+            </div>
         </div>
       </div>
     </div>
