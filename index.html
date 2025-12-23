@@ -10,6 +10,11 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5501/5501360.png">
     
     <title>Invest Dashboard</title>
+    <script>
+      // Global shim for process.env to prevent ReferenceErrors in browser environments
+      // This is crucial for environments like Vercel when serving raw modules
+      window.process = window.process || { env: {} };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -23,7 +28,6 @@
                 accent: 'var(--brand-accent)',
                 highlight: 'var(--brand-highlight)',
                 muted: 'var(--brand-muted)',
-                // Fallbacks for standard Tailwind classes
                 500: 'var(--brand-primary)',
                 600: 'var(--brand-secondary)',
                 400: 'var(--brand-accent)',
@@ -51,7 +55,6 @@
       }
     </script>
     <style>
-      /* Universal Scrollbar Hiding & Styling */
       .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
         height: 4px;
@@ -78,7 +81,6 @@
         transition: background-color 0.7s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
-      /* Fix: Remove focus outlines from all interactive elements, especially charts */
       *:focus {
         outline: none !important;
         box-shadow: none !important;
@@ -89,7 +91,6 @@
         -webkit-tap-highlight-color: transparent !important;
       }
 
-      /* Specific Recharts accessibility focus override */
       .recharts-sector:focus, .recharts-curve:focus, .recharts-dot:focus, .recharts-active-dot:focus {
         outline: none !important;
       }

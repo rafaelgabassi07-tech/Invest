@@ -8,7 +8,15 @@ export const getFinancialAdvice = async (
   portfolio: PortfolioItem[]
 ): Promise<string> => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Check for API key presence to avoid internal ReferenceErrors
+    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+    
+    if (!apiKey) {
+      console.warn("[Gemini Advisor] API_KEY não configurada.");
+      return "O serviço de IA não está configurado. Por favor, adicione sua API_KEY às variáveis de ambiente.";
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
     
     const systemInstruction = `
       Você é um consultor financeiro sênior especializado no mercado brasileiro (B3).
@@ -33,7 +41,7 @@ export const getFinancialAdvice = async (
 
     return response.text || "Desculpe, não consegui processar sua análise agora.";
   } catch (error) {
-    console.error("Gemini Advisor Error:", error);
-    return "Erro ao conectar com o serviço de IA. Verifique sua conexão.";
+    console.error("[Gemini Advisor] Erro de conexão:", error);
+    return "Ocorreu um erro ao conectar com o serviço de IA. Verifique sua conexão ou se a API_KEY é válida.";
   }
 };
