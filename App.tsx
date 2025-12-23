@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback, useRef } from 'react';
 import { Header } from './components/Header.tsx';
 import { SummaryCard } from './components/SummaryCard.tsx';
 import { PortfolioChart } from './components/PortfolioChart.tsx';
@@ -37,6 +37,9 @@ const App: React.FC = () => {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
+  // Ref para controlar se os dados iniciais já foram carregados e evitar loops
+  const hasLoadedInitialData = useRef(false);
+
   const [assets, setAssets] = useState<Asset[]>(() => {
     try {
       const saved = localStorage.getItem('invest_assets');
@@ -88,15 +91,25 @@ const App: React.FC = () => {
         if (liveData && liveData.length > 0) {
           setAssets(prev => prev.map(asset => {
               const live = liveData.find((l: any) => l.symbol === asset.ticker);
-              return live ? {
+              // Só atualiza se houver mudança real para evitar renderizações desnecessárias
+              if (!live) return asset;
+              
+              const newTotalValue = live.regularMarketPrice * asset.quantity;
+              const newDailyChange = live.regularMarketChangePercent || 0;
+              
+              if (asset.currentPrice === live.regularMarketPrice && asset.dailyChange === newDailyChange) {
+                return asset;
+              }
+
+              return {
                 ...asset,
                 currentPrice: live.regularMarketPrice,
-                totalValue: live.regularMarketPrice * asset.quantity,
-                dailyChange: live.regularMarketChangePercent || 0,
+                totalValue: newTotalValue,
+                dailyChange: newDailyChange,
                 companyName: live.longName || asset.companyName,
                 // Preserva metadados extras se a API retornar
                 shortName: asset.shortName || live.symbol,
-              } : asset;
+              };
           }));
         }
     } catch (err) {
@@ -200,10 +213,12 @@ const App: React.FC = () => {
     setTimeout(() => refreshMarketData(true), 1000);
   }, [refreshMarketData]);
 
+  // Hook para carregar dados iniciais APENAS UMA VEZ após o splash screen
   useEffect(() => {
-    if (!isAppLoading) {
+    if (!isAppLoading && !hasLoadedInitialData.current) {
       // Carregamento inicial usa cache (force=false)
       refreshMarketData(false);
+      hasLoadedInitialData.current = true;
     }
   }, [isAppLoading, refreshMarketData]);
 
