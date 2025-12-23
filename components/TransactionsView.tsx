@@ -100,7 +100,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                             <Wallet size={18} />
                         </div>
                         <div>
-                            <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest leading-none">Saldo do Mês</p>
+                            <p className="text-gray-400 text-[9px] font-bold uppercase tracking-widest leading-none">Fluxo de Caixa</p>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                                 R$ {stats.net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </h2>
@@ -117,8 +117,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888815" />
                             <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 9, fontWeight: 700 }} axisLine={false} tickLine={false} />
                             <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#1c1c1e', borderRadius: '12px', border: 'none', fontSize: '10px' }} />
-                            <Bar dataKey="buy" fill="#f43f5e" radius={[2, 2, 0, 0]} barSize={12} />
-                            <Bar dataKey="sell" fill="#10b981" radius={[2, 2, 0, 0]} barSize={12} />
+                            <Bar dataKey="buy" fill="#3b82f6" radius={[2, 2, 0, 0]} barSize={12} name="Compras" />
+                            <Bar dataKey="sell" fill="#10b981" radius={[2, 2, 0, 0]} barSize={12} name="Vendas" />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -162,7 +162,6 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
 
       {/* 3. Grouped List Section */}
       <div className="px-6 mt-6 space-y-10">
-         {/* Fix: Explicitly cast Object.entries(groupedList) to ensure 'items' is inferred as Transaction[] instead of unknown. */}
          {(Object.entries(groupedList) as [string, Transaction[]][]).map(([dateGroup, items], groupIndex) => (
             <div key={dateGroup} className="animate-slide-up" style={{ animationDelay: `${groupIndex * 50}ms` }}>
                 {/* Month/Year Label */}
@@ -186,14 +185,14 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                         >
                             {/* Dot on Line */}
                             <div className={`absolute -left-[25.5px] top-5 w-2.5 h-2.5 rounded-full border-2 bg-white dark:bg-[#050505] transition-transform group-hover:scale-125 z-10 ${
-                                t.type === 'Compra' ? 'border-rose-500' : 'border-emerald-500'
+                                t.type === 'Compra' ? 'border-blue-500' : 'border-emerald-500'
                             }`}></div>
 
                             <div className="bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-md p-4 rounded-2xl border border-gray-100 dark:border-white/5 flex justify-between items-center hover:border-brand-primary/30 transition-all active:scale-[0.99] group-hover:shadow-lg shadow-sm">
                                 <div className="flex items-center gap-3">
                                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black border ${
                                         t.type === 'Compra' 
-                                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' 
+                                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-500' 
                                         : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
                                     }`}>
                                         {t.ticker.substring(0,2)}
@@ -202,7 +201,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                                         <div className="flex items-center gap-2">
                                             <h4 className="text-gray-900 dark:text-white font-black text-sm">{t.ticker}</h4>
                                             <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase border ${
-                                                t.type === 'Compra' ? 'border-rose-500/30 text-rose-500' : 'border-emerald-500/30 text-emerald-500'
+                                                t.type === 'Compra' ? 'border-blue-500/30 text-blue-500' : 'border-emerald-500/30 text-emerald-500'
                                             }`}>
                                                 {t.type}
                                             </span>
@@ -214,7 +213,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                                 </div>
                                 <div className="text-right">
                                     <p className={`font-black text-sm tabular-nums ${t.type === 'Compra' ? 'text-gray-900 dark:text-white' : 'text-emerald-500'}`}>
-                                        {t.type === 'Compra' ? '-' : '+'} R$ {t.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        {t.type === 'Compra' ? '' : '+'} R$ {t.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                     </p>
                                     <div className="flex items-center justify-end gap-1 mt-1">
                                         <Calendar size={10} className="text-gray-400" />

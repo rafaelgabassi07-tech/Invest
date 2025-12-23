@@ -67,21 +67,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
 
     // Format Date for display (e.g., "23 Dez 2025")
     const dateObj = new Date(date);
-    // Adjust for timezone offset to prevent day shifting
     const userTimezoneOffset = dateObj.getTimezoneOffset() * 60000;
     const adjustedDate = new Date(dateObj.getTime() + userTimezoneOffset);
     
     const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const formattedDate = `${adjustedDate.getDate()} ${months[adjustedDate.getMonth()]} ${adjustedDate.getFullYear()}`;
 
+    // Ensure absolute positive values for calculations
+    const cleanQty = Math.abs(Number(quantity));
+    const cleanPrice = Math.abs(Number(price));
+
     const transactionData: Transaction = {
-      id: initialTransaction ? initialTransaction.id : Date.now().toString(), // Keep ID if editing
-      ticker: ticker.toUpperCase(),
+      id: initialTransaction ? initialTransaction.id : Date.now().toString(),
+      ticker: ticker.toUpperCase().trim(),
       type: operation,
       date: formattedDate,
-      quantity: Number(quantity),
-      price: Number(price),
-      total: Number(quantity) * Number(price)
+      quantity: cleanQty,
+      price: cleanPrice,
+      total: cleanQty * cleanPrice
     };
 
     setTimeout(() => {
@@ -126,12 +129,14 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
           {/* Operation Type Switch - Compact */}
           <div className="bg-gray-100 dark:bg-[#2c2c2e] p-1.5 rounded-xl flex mb-6">
             <button 
+              type="button"
               onClick={() => setOperation('Compra')}
               className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${operation === 'Compra' ? 'bg-white dark:bg-[#3a3a3c] text-emerald-600 dark:text-emerald-500 shadow-sm' : 'text-gray-500'}`}
             >
               Compra
             </button>
             <button 
+              type="button"
               onClick={() => setOperation('Venda')}
               className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${operation === 'Venda' ? 'bg-white dark:bg-[#3a3a3c] text-rose-600 dark:text-rose-500 shadow-sm' : 'text-gray-500'}`}
             >
@@ -195,6 +200,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                     <Hash size={18} className="text-gray-400 mr-2" />
                     <input 
                     type="number" 
+                    min="0"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
                     placeholder="0"
@@ -211,6 +217,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
                     <input 
                     type="number" 
                     step="0.01"
+                    min="0"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="0,00"
@@ -238,7 +245,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
             <div className="mt-6 p-4 rounded-2xl bg-gray-50 dark:bg-[#2c2c2e]/30 border border-gray-200 dark:border-white/5 flex justify-between items-center">
                 <span className="text-xs font-bold text-gray-500 uppercase">Total Estimado</span>
                 <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    R$ {((Number(quantity) || 0) * (Number(price) || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {((Math.abs(Number(quantity)) || 0) * (Math.abs(Number(price)) || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </span>
             </div>
 
@@ -248,6 +255,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ onClos
         {/* Footer Actions */}
         <div className="p-6 border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#1c1c1e]">
             <button 
+                type="button"
                 onClick={handleSubmit}
                 disabled={!ticker || !quantity || !price}
                 className={`w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wide shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 ${!ticker || !quantity || !price ? 'bg-gray-300 dark:bg-[#2c2c2e] text-gray-500 cursor-not-allowed shadow-none' : 'bg-brand-500 hover:bg-brand-600 shadow-brand-500/30'}`}
