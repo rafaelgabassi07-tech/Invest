@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, Share2, Layers, Info, CheckCircle2, Ticket, LayoutGrid, Building2, X, PieChart as PieChartIcon } from 'lucide-react';
+import { ChevronLeft, Layers, Info, CheckCircle2, Ticket, LayoutGrid, Building2, X, PieChart as PieChartIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { Asset, PortfolioItem } from '../types';
 
@@ -21,19 +21,21 @@ const COLORS = {
 
 const renderActiveShape = (props: any) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload } = props;
+  const isMobile = window.innerWidth < 768;
+  
   return (
     <g>
-      <text x={cx} y={cy - 10} dy={8} textAnchor="middle" fill={fill} className="text-3xl font-bold drop-shadow-sm">
+      <text x={cx} y={cy - 10} dy={8} textAnchor="middle" fill={fill} className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold drop-shadow-sm`}>
         {payload.percentage}%
       </text>
-      <text x={cx} y={cy + 20} dy={8} textAnchor="middle" fill="#9ca3af" className="text-xs font-bold uppercase tracking-widest">
+      <text x={cx} y={cy + 20} dy={8} textAnchor="middle" fill="#9ca3af" className="text-[10px] font-bold uppercase tracking-widest">
         {payload.name.length > 12 ? payload.name.substring(0, 10) + '..' : payload.name}
       </text>
       <Sector
         cx={cx}
         cy={cy}
         innerRadius={innerRadius}
-        outerRadius={outerRadius + 10}
+        outerRadius={outerRadius + (isMobile ? 6 : 10)}
         startAngle={startAngle}
         endAngle={endAngle}
         fill={fill}
@@ -117,16 +119,16 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
   };
 
   return (
-    <div className="fixed inset-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
+    <div className="fixed inset-0 left-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
       <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
         
         {/* Header */}
-        <div className="px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
+        <div className="px-4 md:px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
           <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90">
             <ChevronLeft size={24} />
           </button>
           <div className="flex flex-col items-center">
-             <h1 className="text-lg font-bold text-gray-900 dark:text-white">Estrutura da Carteira</h1>
+             <h1 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Estrutura da Carteira</h1>
              <p className="text-[10px] text-blue-500 font-bold uppercase tracking-wide">Alocação e Risco</p>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
@@ -136,37 +138,37 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="max-w-7xl mx-auto px-6 py-8 w-full h-full flex flex-col lg:flex-row gap-8">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full h-full flex flex-col lg:flex-row gap-6 md:gap-8">
                 
                 {/* Left Column: Controls & Chart */}
-                <div className="lg:w-1/2 flex flex-col gap-6">
+                <div className="lg:w-1/2 flex flex-col gap-4 md:gap-6 shrink-0">
                     {/* View Switcher */}
-                    <div className="flex p-1.5 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-gray-200 dark:border-white/5 shadow-md">
+                    <div className="flex p-1.5 bg-white dark:bg-[#1c1c1e] rounded-2xl border border-gray-200 dark:border-white/5 shadow-md overflow-x-auto">
                         {[
-                            { id: 'assets', label: 'Por Ativo', icon: Ticket },
-                            { id: 'segments', label: 'Por Segmento', icon: LayoutGrid },
-                            { id: 'allocation', label: 'Classe de Ativo', icon: Building2 }
+                            { id: 'assets', label: 'Ativo', icon: Ticket },
+                            { id: 'segments', label: 'Setor', icon: LayoutGrid },
+                            { id: 'allocation', label: 'Classe', icon: Building2 }
                         ].map((tab) => (
                             <button 
                                 key={tab.id}
                                 onClick={() => setViewMode(tab.id as ViewMode)}
-                                className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold rounded-xl transition-all duration-300 uppercase ${
+                                className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 text-[10px] md:text-xs font-bold rounded-xl transition-all duration-300 uppercase whitespace-nowrap ${
                                     viewMode === tab.id 
                                     ? 'bg-blue-600 text-white shadow-lg' 
                                     : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
                                 }`}
                             >
-                                <tab.icon size={16} />
+                                <tab.icon size={14} />
                                 {tab.label}
                             </button>
                         ))}
                     </div>
 
                     {/* Chart Card */}
-                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 relative overflow-hidden shadow-xl flex-1 min-h-[500px] flex flex-col justify-center items-center">
+                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-8 border border-gray-200 dark:border-white/5 relative overflow-hidden shadow-xl min-h-[350px] md:min-h-[500px] flex flex-col justify-center items-center">
                         <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-gray-50/50 dark:from-white/[0.02] to-transparent pointer-events-none"></div>
                         
-                        <div className="w-full h-full relative z-10 flex-1 min-h-[400px] flex items-center justify-center">
+                        <div className="w-full h-full relative z-10 flex-1 min-h-[300px] flex items-center justify-center">
                             {chartData.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -176,8 +178,8 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
                                     data={chartData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={100}
-                                    outerRadius={140}
+                                    innerRadius={window.innerWidth < 768 ? 70 : 100}
+                                    outerRadius={window.innerWidth < 768 ? 100 : 140}
                                     paddingAngle={4}
                                     dataKey="value"
                                     onMouseEnter={onPieEnter}
@@ -198,71 +200,71 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
                             )}
                         </div>
                         
-                        <div className="mt-4 flex items-center gap-2 text-gray-400 bg-gray-50 dark:bg-[#2c2c2e] px-4 py-2 rounded-full border border-gray-200 dark:border-white/5">
-                            <Info size={14} /> 
-                            <span className="text-xs font-medium">Passe o mouse ou toque para detalhes</span>
+                        <div className="mt-4 flex items-center gap-2 text-gray-400 bg-gray-50 dark:bg-[#2c2c2e] px-4 py-2 rounded-full border border-gray-200 dark:border-white/5 max-w-full">
+                            <Info size={14} className="shrink-0" /> 
+                            <span className="text-[10px] md:text-xs font-medium truncate">Toque nas fatias para detalhes</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Right Column: List & Stats */}
-                <div className="lg:w-1/2 flex flex-col gap-6">
+                <div className="lg:w-1/2 flex flex-col gap-4 md:gap-6 pb-10">
                     {/* Score Card */}
-                    <div className="bg-white dark:bg-[#1c1c1e] p-8 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
+                    <div className="bg-white dark:bg-[#1c1c1e] p-6 md:p-8 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
-                                <PieChartIcon className="text-blue-500" /> Índice de Diversificação
+                            <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg flex items-center gap-2">
+                                <PieChartIcon className="text-blue-500" /> Índice Diversif.
                             </h3>
-                            <span className="text-emerald-500 font-bold text-sm bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/20">Excelente (92/100)</span>
+                            <span className="text-emerald-500 font-bold text-xs md:text-sm bg-emerald-500/10 px-2 md:px-3 py-1 rounded-lg border border-emerald-500/20">Excelente (92)</span>
                         </div>
-                        <div className="w-full bg-gray-100 dark:bg-[#2c2c2e] rounded-full h-4 overflow-hidden flex gap-1">
+                        <div className="w-full bg-gray-100 dark:bg-[#2c2c2e] rounded-full h-3 md:h-4 overflow-hidden flex gap-1">
                             <div className="bg-blue-500 h-full w-[40%]"></div>
                             <div className="bg-emerald-500 h-full w-[30%]"></div>
                             <div className="bg-amber-500 h-full w-[20%]"></div>
                             <div className="bg-indigo-500 h-full w-[10%]"></div>
                         </div>
                         <p className="text-xs text-gray-500 mt-3">
-                            Sua carteira está bem distribuída entre diferentes classes, reduzindo riscos específicos.
+                            Carteira bem distribuída, reduzindo riscos específicos.
                         </p>
                     </div>
 
                     {/* Breakdown List */}
-                    <div className="flex-1 bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex flex-col overflow-hidden max-h-[500px] lg:max-h-full">
-                        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-6 px-2">
+                    <div className="flex-1 bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-4 md:p-6 border border-gray-200 dark:border-white/5 shadow-xl flex flex-col overflow-hidden h-auto min-h-[300px]">
+                        <h3 className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-4 px-2">
                             Detalhamento por {viewMode === 'assets' ? 'Ativo' : viewMode === 'segments' ? 'Segmento' : 'Classe'}
                         </h3>
                         
-                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-3">
                             {chartData.map((item, index) => (
                                 <div 
                                     key={item.id} 
-                                    onMouseEnter={() => setActiveIndex(index)}
-                                    className={`p-5 rounded-2xl border flex justify-between items-center transition-all cursor-pointer hover:scale-[1.01] ${
+                                    onClick={() => setActiveIndex(index)}
+                                    className={`p-4 rounded-2xl border flex justify-between items-center transition-all cursor-pointer active:scale-[0.98] ${
                                         activeIndex === index 
                                         ? 'bg-blue-50/80 dark:bg-[#2c2c2e] border-blue-500/30 ring-1 ring-blue-500/20 shadow-md' 
                                         : 'bg-gray-50 dark:bg-[#2c2c2e]/40 border-gray-100 dark:border-white/5'
                                     }`}
                                 >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-md" style={{ backgroundColor: item.color }}>
-                                            <Layers size={20} />
+                                    <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+                                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-md shrink-0" style={{ backgroundColor: item.color }}>
+                                            <Layers size={18} />
                                         </div>
-                                        <div>
-                                            <h4 className="text-gray-900 dark:text-white font-bold text-base">{item.name}</h4>
+                                        <div className="min-w-0">
+                                            <h4 className="text-gray-900 dark:text-white font-bold text-sm md:text-base truncate">{item.name}</h4>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <div className="h-2 w-24 bg-gray-200 dark:bg-[#0d0d0d] rounded-full overflow-hidden">
+                                                <div className="h-1.5 md:h-2 w-16 md:w-24 bg-gray-200 dark:bg-[#0d0d0d] rounded-full overflow-hidden">
                                                     <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${item.percentage}%`, backgroundColor: item.color }}></div>
                                                 </div>
-                                                <span className="text-gray-500 text-xs font-bold">{item.percentage}%</span>
+                                                <span className="text-gray-500 text-[10px] md:text-xs font-bold">{item.percentage}%</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="text-right">
-                                        <p className="text-gray-900 dark:text-white font-bold text-base">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-gray-900 dark:text-white font-bold text-sm md:text-base">R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                                         <div className="flex items-center justify-end gap-1 text-emerald-500 mt-1">
-                                            <CheckCircle2 size={12} />
-                                            <span className="text-[10px] font-bold uppercase">Balanceado</span>
+                                            <CheckCircle2 size={10} />
+                                            <span className="text-[9px] font-bold uppercase hidden md:inline">Balanceado</span>
                                         </div>
                                     </div>
                                 </div>

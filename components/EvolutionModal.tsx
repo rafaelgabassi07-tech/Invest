@@ -78,11 +78,11 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
   }, [localTransactions, totalValue]);
 
   return (
-    <div className="fixed inset-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
+    <div className="fixed inset-0 left-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
       <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
         
         {/* Header */}
-        <div className="px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
+        <div className="px-4 md:px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
           <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90">
             <ChevronLeft size={24} />
           </button>
@@ -99,9 +99,9 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="max-w-7xl mx-auto px-6 py-8 w-full">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full">
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
                     <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
                         <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Investido (Custo)</p>
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white">R$ {stats.invested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
@@ -123,13 +123,13 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 shadow-xl relative overflow-hidden min-h-[400px]">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-8 border border-gray-200 dark:border-white/5 shadow-xl relative overflow-hidden min-h-[350px] mb-20 md:mb-0">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 px-2">
                         <TrendingUp className="text-brand-500" />
                         Curva de Aportes
                     </h3>
                     
-                    <div className="w-full h-[350px]">
+                    <div className="w-full h-[300px] md:h-[350px] -ml-2">
                         {chartData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -139,7 +139,7 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
                                         <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 12 }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
+                                <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
                                 <Tooltip 
                                     contentStyle={{ backgroundColor: '#1c1c1e', border: 'none', borderRadius: '12px', color: '#fff' }}
                                     formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Investido Acumulado']}
