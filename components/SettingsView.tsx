@@ -1,14 +1,15 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   User, Shield, Settings, Bell, 
   Calculator, Book, LogOut, ChevronRight, ChevronLeft,
   Download, Search, Check, Smartphone, Store, Lock, EyeOff, Fingerprint,
   DollarSign, Mail, ShieldCheck, Laptop, Globe,
   Trash2, HelpCircle, AlertTriangle, FileJson, FileSpreadsheet,
-  Coins, Database, CloudDownload, CloudUpload, AlertCircle
+  Coins, Database, CloudDownload, CloudUpload, AlertCircle, Activity, Server, Cpu
 } from 'lucide-react';
 import { AppTheme, Asset, Transaction } from '../types';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface SettingsViewProps {
   currentTheme: AppTheme;
@@ -88,6 +89,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const apiTelemetry = useMemo(() => {
+    try {
+      const logs = JSON.parse(localStorage.getItem('invest_api_logs') || '[]');
+      const grouped: Record<string, { date: string, brapi: number, gemini: number, total: number }> = {};
+      
+      // Criar últimos 7 dias como base
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        grouped[key] = { date: key, brapi: 0, gemini: 0, total: 0 };
+      }
+
+      logs.forEach((log: any) => {
+        const key = new Date(log.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        if (grouped[key]) {
+          if (log.service === 'brapi') grouped[key].brapi++;
+          if (log.service === 'gemini') grouped[key].gemini++;
+          grouped[key].total++;
+        }
+      });
+
+      const totalBrapi = logs.filter((l: any) => l.service === 'brapi').length;
+      const totalGemini = logs.filter((l: any) => l.service === 'gemini').length;
+
+      return {
+        chartData: Object.values(grouped),
+        totalBrapi,
+        totalGemini,
+        total: logs.length,
+        last24h: logs.filter((l: any) => l.timestamp > Date.now() - 24 * 60 * 60 * 1000).length
+      };
+    } catch (e) {
+      return { chartData: [], totalBrapi: 0, totalGemini: 0, total: 0, last24h: 0 };
+    }
+  }, [activeSection]);
+
   const filteredThemes = availableThemes.filter(t => themeFilter === 'all' ? true : t.type === themeFilter);
 
   const calculateCompoundInterest = () => {
@@ -140,7 +178,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
         try {
             const json = JSON.parse(event.target?.result as string);
             
-            // Validação simples de estrutura
             if (!json.assets || !Array.isArray(json.assets)) {
                 throw new Error("Arquivo inválido: Lista de ativos não encontrada.");
             }
@@ -158,7 +195,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
         }
     };
     reader.readAsText(file);
-    // Limpar input para permitir importar o mesmo arquivo se necessário
     e.target.value = '';
   };
 
@@ -203,6 +239,113 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                     </div>
                 </div>
             </div>
+        );
+      case 'api_connections':
+        return (
+          <div className="animate-slide-up pb-10">
+            <SubPageHeader title="Conexões API" onBack={() => setActiveSection(null)} />
+            <div className="px-4 mt-6 space-y-6">
+              
+              {/* Status Cards */}
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-5 rounded-3xl border border-white/5 shadow-md flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                       <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/10">
+                          <Server size={20} />
+                       </div>
+                       <span className="flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                       </span>
+                    </div>
+                    <div>
+                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">BRAPI</h4>
+                       <p className="text-sm font-black text-gray-900 dark:text-white">Mercado Financeiro</p>
+                    </div>
+                 </div>
+                 <div className="bg-white/60 dark:bg-[#1c1c1e]/60 p-5 rounded-3xl border border-white/5 shadow-md flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                       <div className="w-10 h-10 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-500 border border-brand-500/10">
+                          <Cpu size={20} />
+                       </div>
+                       <span className="flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                       </span>
+                    </div>
+                    <div>
+                       <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">GEMINI 3</h4>
+                       <p className="text-sm font-black text-gray-900 dark:text-white">Inteligência Artificial</p>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-3 gap-3">
+                 <div className="bg-white/40 dark:bg-[#1c1c1e]/40 p-4 rounded-2xl border border-white/5 text-center">
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">Requisições (30d)</span>
+                    <p className="text-lg font-black text-gray-900 dark:text-white">{apiTelemetry.total}</p>
+                 </div>
+                 <div className="bg-white/40 dark:bg-[#1c1c1e]/40 p-4 rounded-2xl border border-white/5 text-center">
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">Últimas 24h</span>
+                    <p className="text-lg font-black text-emerald-500">{apiTelemetry.last24h}</p>
+                 </div>
+                 <div className="bg-white/40 dark:bg-[#1c1c1e]/40 p-4 rounded-2xl border border-white/5 text-center">
+                    <span className="text-[9px] font-bold text-gray-500 uppercase">Média Diária</span>
+                    <p className="text-lg font-black text-gray-900 dark:text-white">{(apiTelemetry.total / 30).toFixed(1)}</p>
+                 </div>
+              </div>
+
+              {/* Usage Chart */}
+              <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2.5rem] p-6 border border-white/5 shadow-xl">
+                 <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                    <Activity size={18} className="text-brand-500" />
+                    Fluxo de Telemetria
+                 </h3>
+                 <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                       <AreaChart data={apiTelemetry.chartData}>
+                          <defs>
+                             <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0}/>
+                             </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.1)" vertical={false} />
+                          <XAxis dataKey="date" tick={{fontSize: 10, fill: '#888'}} axisLine={false} tickLine={false} />
+                          <YAxis hide />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c1c1e', border: 'none', borderRadius: '12px', fontSize: '10px', color: '#fff' }}
+                            itemStyle={{ fontWeight: 'bold' }}
+                          />
+                          <Area 
+                             type="monotone" 
+                             dataKey="total" 
+                             name="Requisições" 
+                             stroke="var(--brand-primary)" 
+                             strokeWidth={3} 
+                             fill="url(#colorTotal)" 
+                             animationDuration={1500}
+                          />
+                       </AreaChart>
+                    </ResponsiveContainer>
+                 </div>
+              </div>
+
+              <div className="bg-blue-500/5 border border-blue-500/10 p-5 rounded-3xl flex gap-4">
+                 <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                    <Globe size={20} className="text-blue-500" />
+                 </div>
+                 <div>
+                    <h5 className="text-xs font-bold text-blue-500 mb-1">Sobre a BRAPI</h5>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed font-medium">
+                       Dados de ativos brasileiros (Ações e FIIs) são obtidos em tempo real via BRAPI. 
+                       O app otimiza requisições através de cache local de 10 minutos.
+                    </p>
+                 </div>
+              </div>
+            </div>
+          </div>
         );
       case 'backup':
         return (
@@ -284,14 +427,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
            </div>
         );
       case 'calculators':
-        const res = calculateCompoundInterest();
         return (
            <div className="animate-slide-up pb-10">
               <SubPageHeader title="Calculadoras" onBack={() => setActiveSection(null)} />
               <div className="px-4 mt-6">
                 <div className="bg-brand-muted p-8 rounded-[2.5rem] border border-brand-500/20 mb-8 text-center shadow-2xl">
                     <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-2">Montante Final</p>
-                    <h2 className="text-4xl font-bold text-white">R$ {res.total.toLocaleString('pt-BR')}</h2>
+                    <h2 className="text-4xl font-bold text-white">R$ {calculateCompoundInterest().total.toLocaleString('pt-BR')}</h2>
                 </div>
                 <div className="space-y-6">
                     <input type="range" min="0" max="50000" step="100" value={calcInitial} onChange={e => setCalcInitial(Number(e.target.value))} className="w-full accent-brand-500" />
@@ -326,6 +468,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-8 shadow-lg">
         <SettingsItem icon={User} title="Meu Perfil" subtitle="Investidor Pro" onClick={() => setActiveSection('profile')} />
         <SettingsItem icon={Shield} title="Segurança" subtitle="Proteção e Privacidade" onClick={() => setActiveSection('security')} />
+        <SettingsItem icon={Globe} title="Conexões API" subtitle="Telemetria e Status" onClick={() => setActiveSection('api_connections')} />
         <SettingsItem icon={Database} title="Backup & Dados" subtitle="Importar e Exportar" onClick={() => setActiveSection('backup')} hasBorder={false} />
       </div>
 

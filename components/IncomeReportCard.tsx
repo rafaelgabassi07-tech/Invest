@@ -9,7 +9,6 @@ interface IncomeReportCardProps {
 }
 
 export const IncomeReportCard: React.FC<IncomeReportCardProps> = ({ assets, onClick }) => {
-  // Logic to separate FIIs/Fiagro from Stocks (Ações)
   const incomeData = assets.reduce(
     (acc, asset) => {
       const monthlyIncome = asset.lastDividend * asset.quantity;
@@ -40,12 +39,10 @@ export const IncomeReportCard: React.FC<IncomeReportCardProps> = ({ assets, onCl
   return (
     <div 
       onClick={onClick}
-      className="mx-4 md:mx-0 p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in h-full flex flex-col justify-between"
+      className="p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in h-full flex flex-col justify-between"
     >
-      {/* Decorative Blur */}
       <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
 
-      {/* Header */}
       <div className="flex justify-between items-start mb-6 relative z-10">
         <div className="flex items-center gap-3">
            <div className="w-10 h-10 rounded-2xl bg-amber-50/50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-500 border border-amber-100/50 dark:border-white/5 shadow-sm backdrop-blur-sm">
@@ -68,7 +65,6 @@ export const IncomeReportCard: React.FC<IncomeReportCardProps> = ({ assets, onCl
       </div>
 
       <div className="flex-1 flex flex-col justify-end">
-        {/* Main Stats */}
         <div className="flex justify-between items-end mb-6 relative z-10">
             <div>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Renda Mensal</p>
@@ -88,7 +84,6 @@ export const IncomeReportCard: React.FC<IncomeReportCardProps> = ({ assets, onCl
             </div>
         </div>
 
-        {/* Composition Bar */}
         <div className="relative z-10">
             <div className="h-2 w-full bg-[#f3f4f6]/50 dark:bg-[#0d0d0d]/50 rounded-full overflow-hidden flex border border-gray-100/50 dark:border-white/5 backdrop-blur-sm">
                 <div 
@@ -101,7 +96,6 @@ export const IncomeReportCard: React.FC<IncomeReportCardProps> = ({ assets, onCl
                 ></div>
             </div>
 
-            {/* Legend */}
             <div className="flex justify-between items-center mt-2">
                 <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.5)]"></div>

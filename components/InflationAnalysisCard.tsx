@@ -7,7 +7,6 @@ interface InflationAnalysisCardProps {
   onClick: () => void;
 }
 
-// Mock Data for Sparkline - Zerado
 const data = [
   { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }
 ];
@@ -16,12 +15,10 @@ export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ on
   return (
     <div 
       onClick={onClick}
-      className="mx-4 md:mx-0 p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in h-full flex flex-col justify-between"
+      className="p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in h-full flex flex-col justify-between"
     >
-      {/* Background Decor */}
       <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
       
-      {/* Standard Header Structure */}
       <div className="flex justify-between items-start relative z-10 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-emerald-50/50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-500 border border-emerald-100/50 dark:border-white/5 shadow-sm backdrop-blur-sm">
@@ -43,7 +40,6 @@ export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ on
         </div>
       </div>
 
-      {/* Body & Chart */}
       <div className="flex items-end justify-between relative z-10">
          <div>
              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Ganho Real (12m)</p>
@@ -55,7 +51,6 @@ export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ on
              </h2>
          </div>
 
-         {/* Sparkline Chart */}
          <div className="h-10 w-24 relative mb-1 opacity-50">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>

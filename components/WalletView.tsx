@@ -70,7 +70,7 @@ export const WalletView: React.FC<WalletViewProps> = ({ assets, onAssetClick }) 
 
   return (
     <div className="pb-32">
-       <div className="px-6 pt-2 pb-3 relative z-10 transition-colors">
+       <div className="pt-2 pb-6 relative z-10 transition-colors">
          <div className="bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl p-7 rounded-[2.5rem] border border-white/40 dark:border-white/10 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
             
@@ -101,14 +101,14 @@ export const WalletView: React.FC<WalletViewProps> = ({ assets, onAssetClick }) 
          </div>
        </div>
 
-       <div className="sticky top-0 z-20 bg-white/60 dark:bg-[#050505]/60 backdrop-blur-xl border-b border-white/40 dark:border-white/5 py-3 px-6 mb-3 flex items-center gap-3 overflow-x-auto custom-scrollbar transition-colors">
-          <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider mr-1">Ordenar:</span>
+       <div className="sticky top-0 z-20 bg-white/60 dark:bg-[#050505]/60 backdrop-blur-xl border-b border-white/40 dark:border-white/5 py-4 px-2 mb-6 flex items-center gap-3 overflow-x-auto custom-scrollbar transition-colors">
+          <span className="text-gray-500 text-[10px] font-bold uppercase tracking-wider ml-4 mr-1">Ordenar:</span>
           <SortButton option="value" label="Valor" />
           <SortButton option="change" label="Variação" />
           <SortButton option="name" label="Nome" />
        </div>
        
-       <div className="px-4 space-y-2 min-h-[50vh]">
+       <div className="space-y-4 min-h-[50vh]">
          {sortedAssets.length > 0 ? sortedAssets.map((asset, index) => (
            <AssetCard 
              key={asset.id} 

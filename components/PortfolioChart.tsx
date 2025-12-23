@@ -15,12 +15,10 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({ items, onClick }
   return (
     <div 
       onClick={onClick}
-      className="mx-4 md:mx-0 p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl shadow-xl shadow-gray-200/40 dark:shadow-black/20 border border-white/40 dark:border-white/10 relative overflow-hidden group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 h-full"
+      className="p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl shadow-xl shadow-gray-200/40 dark:shadow-black/20 border border-white/40 dark:border-white/10 relative overflow-hidden group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 h-full"
     >
-      {/* Decorative Blur - Subtle */}
       <div className="absolute top-0 left-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2"></div>
 
-      {/* Header */}
       <div className="flex justify-between items-start mb-6 relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-blue-50/50 dark:bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-500 border border-blue-100/50 dark:border-white/5 shadow-sm backdrop-blur-sm">

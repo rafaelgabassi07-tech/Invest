@@ -7,7 +7,6 @@ interface EvolutionCardProps {
   onClick: () => void;
 }
 
-// Sparkline zerado ou plano para estado inicial
 const data = [
   { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, 
   { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }
@@ -17,9 +16,8 @@ export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="mx-4 md:mx-0 p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in h-full flex flex-col justify-between"
+      className="p-6 rounded-[2.5rem] bg-white/60 dark:bg-[#1c1c1e]/60 backdrop-blur-2xl border border-white/40 dark:border-white/10 relative overflow-hidden shadow-xl shadow-gray-200/40 dark:shadow-black/20 group cursor-pointer active:scale-[0.98] transition-all hover:bg-white/80 dark:hover:bg-[#262629]/80 animate-pop-in h-full flex flex-col justify-between"
     >
-      {/* Background Decor */}
       <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4 pointer-events-none transition-transform group-hover:scale-110 duration-700"></div>
 
       <div className="flex justify-between items-start relative z-10 mb-6">
@@ -56,7 +54,6 @@ export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
             </h2>
          </div>
 
-         {/* Sparkline Chart */}
          <div className="h-10 w-24 relative mb-1 opacity-50">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>

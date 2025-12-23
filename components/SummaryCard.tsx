@@ -8,7 +8,6 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
   const lastValue = useRef(data.totalBalance);
 
   useEffect(() => {
-    // Se a mudança for pequena, não anima para economizar CPU
     if (Math.abs(data.totalBalance - lastValue.current) < 1) {
       setDisplayBalance(data.totalBalance);
       return;
@@ -16,7 +15,7 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
 
     let startTimestamp: number | null = null;
     let animationFrameId: number;
-    const duration = 800; // Animação mais rápida
+    const duration = 800;
     const startValue = lastValue.current;
     const endValue = data.totalBalance;
 
@@ -39,7 +38,7 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
   }, [data.totalBalance]);
 
   return (
-    <div className="mx-4 md:mx-0 mt-2 md:mt-0 mb-2 md:mb-0 p-7 rounded-[2.5rem] bg-white/5 dark:bg-brand-muted/40 backdrop-blur-2xl relative overflow-hidden shadow-2xl border border-brand-highlight group animate-pop-in will-change-transform transform-gpu h-full">
+    <div className="p-7 rounded-[2.5rem] bg-white/5 dark:bg-brand-muted/40 backdrop-blur-2xl relative overflow-hidden shadow-2xl border border-brand-highlight group animate-pop-in will-change-transform transform-gpu h-full">
       
       <div className="absolute top-0 right-0 w-80 h-80 bg-brand-primary/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/4 pointer-events-none transition-transform duration-1000 group-hover:scale-110"></div>
       

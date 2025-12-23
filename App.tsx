@@ -42,7 +42,6 @@ const App: React.FC = () => {
     try {
       const saved = localStorage.getItem('invest_assets');
       if (!saved) return INITIAL_ASSETS;
-      // Added explicit casting to avoid 'unknown' issues during summary calculation
       const parsed = JSON.parse(saved);
       return Array.isArray(parsed) ? (parsed as Asset[]) : INITIAL_ASSETS;
     } catch (e) { return INITIAL_ASSETS; }
@@ -81,12 +80,14 @@ const App: React.FC = () => {
 
   const refreshMarketData = useCallback(async (force = false) => {
     const now = Date.now();
-    // Throttle: Impede atualizações automáticas se a última foi há menos de 30 segundos
     if (!force && now - lastRefreshTimeRef.current < 30000) return;
     if (isRefreshingRef.current) return;
     
     const currentAssets = assetsRef.current;
-    if (currentAssets.length === 0) return;
+    if (currentAssets.length === 0) {
+      setIsAppLoading(false);
+      return;
+    }
     
     isRefreshingRef.current = true;
     setIsRefreshing(true);
@@ -99,13 +100,31 @@ const App: React.FC = () => {
           lastRefreshTimeRef.current = Date.now();
           setAssets(prev => prev.map(asset => {
               const live = liveData.find((l: any) => l.symbol === asset.ticker);
-              return live ? {
+              if (!live) return asset;
+
+              let lastDiv = asset.lastDividend;
+              let lastDivDate = asset.lastDividendDate;
+              if (live.dividendsData?.cashDividends?.length > 0) {
+                  const sortedDivs = [...live.dividendsData.cashDividends].sort((a: any, b: any) => 
+                      new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
+                  );
+                  lastDiv = sortedDivs[0].rate;
+                  lastDivDate = new Date(sortedDivs[0].paymentDate).toLocaleDateString('pt-BR');
+              }
+
+              return {
                 ...asset,
                 currentPrice: live.regularMarketPrice,
                 totalValue: live.regularMarketPrice * asset.quantity,
                 dailyChange: live.regularMarketChangePercent || 0,
-                companyName: live.longName || asset.companyName
-              } : asset;
+                companyName: live.longName || asset.companyName,
+                pvp: live.priceToBook || asset.pvp || 1,
+                pl: live.priceEarnings || asset.pl || 0,
+                lastDividend: lastDiv,
+                lastDividendDate: lastDivDate,
+                dy12m: live.yield || asset.dy12m || 0,
+                liquidity: live.regularMarketVolume?.toLocaleString('pt-BR') || asset.liquidity
+              };
           }));
         }
     } catch (err) {
@@ -187,14 +206,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const root = document.documentElement;
     currentTheme.type === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
-    // Fix: Explicitly cast 'v' to string to satisfy setProperty parameter type
     Object.entries(currentTheme.colors).forEach(([k, v]) => root.style.setProperty(`--brand-${k}`, v as string));
   }, [currentTheme]);
 
   const summaryData = useMemo(() => {
     let balance = 0, cost = 0, projected = 0, weightedChange = 0;
     assets.forEach(a => {
-        // Fix: Explicitly ensure properties are treated as numbers to resolve potential 'unknown' assignment issues
         const val = Number(a.totalValue || 0);
         const cst = Number(a.totalCost || 0);
         const div = Number(a.lastDividend || 0);
@@ -246,10 +263,10 @@ const App: React.FC = () => {
           onRefreshClick={() => refreshMarketData(true)}
         />
         <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 md:pb-6 overscroll-contain">
-          <div className="w-full md:px-6 md:max-w-7xl md:mx-auto">
+          <div className="w-full px-4 md:px-6 md:max-w-7xl md:mx-auto pt-4">
             {activeTab === 'dashboard' && (
-              <div className="space-y-4 pt-2 pb-4">
-                <div className="grid grid-cols-1 md:grid-cols-12 md:gap-6 gap-3 px-1 md:px-0">
+              <div className="space-y-4 pb-4">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
                   <div className="md:col-span-8"><SummaryCard data={summaryData} /></div>
                   <div className="md:col-span-4"><PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} /></div>
                   <div className="md:col-span-6 lg:col-span-3"><EvolutionCard onClick={() => setModalOpen('evolution')} /></div>
@@ -269,7 +286,7 @@ const App: React.FC = () => {
           </div>
         </main>
         <div className="md:hidden"><BottomNav activeTab={activeTab} setActiveTab={setActiveTab} /></div>
-        <AIAdvisor summary={summaryData} portfolio={portfolioData} />
+        <AIAdvisor summary={summaryData} portfolio={portfolioData} assets={assets} />
         {isAddModalOpen && <AddTransactionModal onClose={() => setIsAddModalOpen(false)} onSave={handleSaveTransaction} onDelete={handleDeleteTransaction} initialTransaction={transactionToEdit} />}
         <Suspense fallback={null}>
             {selectedAsset && <AssetDetailModal asset={selectedAsset} transactions={transactions} onClose={() => setSelectedAsset(null)} />}

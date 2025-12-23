@@ -13,6 +13,18 @@ const tickerCache = new Map<string, { timestamp: number; data: any }>();
 // Map para evitar múltiplas requisições simultâneas para o mesmo ticker (In-flight requests)
 const inflightRequests = new Map<string, Promise<any>>();
 
+const logApiRequest = (service: 'brapi' | 'gemini') => {
+  try {
+    const logs = JSON.parse(localStorage.getItem('invest_api_logs') || '[]');
+    logs.push({ service, timestamp: Date.now() });
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const filtered = logs.filter((l: any) => l.timestamp > thirtyDaysAgo).slice(-1000);
+    localStorage.setItem('invest_api_logs', JSON.stringify(filtered));
+  } catch (e) {
+    console.warn("Falha ao logar telemetria", e);
+  }
+};
+
 const getBrapiToken = (): string => {
   // @ts-ignore
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BRAPI_TOKEN) {
@@ -43,6 +55,7 @@ const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
   // 3. Criar nova promessa de busca
   const fetchPromise = (async () => {
     try {
+      logApiRequest('brapi');
       const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}`);
 
       if (response.status === 429) {
@@ -89,6 +102,7 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
   if (cached && (now - cached.timestamp < CACHE_DURATION)) return cached.data;
 
   try {
+    logApiRequest('brapi');
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}`);
     if (!response.ok) return [];
     const data = await response.json();

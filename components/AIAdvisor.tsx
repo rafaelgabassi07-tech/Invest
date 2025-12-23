@@ -2,14 +2,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Bot, Lightbulb } from 'lucide-react';
 import { getFinancialAdvice } from '../services/geminiService';
-import { FinancialSummary, PortfolioItem, ChatMessage } from '../types';
+import { FinancialSummary, PortfolioItem, ChatMessage, Asset } from '../types';
 
 interface AIAdvisorProps {
   summary: FinancialSummary;
   portfolio: PortfolioItem[];
+  assets?: Asset[];
 }
 
-export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio }) => {
+export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio, assets = [] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -48,7 +49,8 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio }) => {
     setIsLoading(true);
 
     try {
-      const responseText = await getFinancialAdvice(userMsg.text, summary, portfolio);
+      // Enviamos agora a lista de assets completa para o serviço
+      const responseText = await getFinancialAdvice(userMsg.text, summary, portfolio, assets);
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
@@ -77,7 +79,6 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio }) => {
         className="fixed bottom-28 md:bottom-10 right-6 w-14 h-14 bg-gradient-to-br from-brand-500 to-brand-secondary rounded-full flex items-center justify-center shadow-2xl shadow-brand-500/40 z-30 hover:scale-110 active:scale-95 transition-all group tap-active"
       >
         <Sparkles size={24} className="text-white group-hover:animate-spin-slow" />
-        {/* Status Dot */}
         <span className="absolute -top-1 -right-1 flex h-4 w-4">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-[#050505]"></span>
@@ -149,7 +150,6 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio }) => {
 
         {/* Input & Suggestions */}
         <div className="border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#1c1c1e] flex flex-col">
-          {/* Suggestions - Only show if few messages or last was from bot */}
           {messages.length < 4 && !isLoading && (
              <div className="flex gap-2 p-3 overflow-x-auto custom-scrollbar bg-gray-50/50 dark:bg-[#1c1c1e]/50 backdrop-blur-sm border-b border-gray-100 dark:border-white/5">
                 {SUGGESTIONS.map((sugg, idx) => (
