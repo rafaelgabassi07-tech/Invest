@@ -111,7 +111,7 @@ const App: React.FC = () => {
   }, [refreshMarketData]);
 
   const handleSaveTransaction = useCallback((newTransaction: Transaction) => {
-    // 1. Atualizar histórico de transações
+    // 1. Atualizar histórico de transações (Adiciona no topo)
     setTransactions(prev => [newTransaction, ...prev]);
 
     // 2. Atualizar ou Criar Ativo na Carteira
@@ -120,10 +120,12 @@ const App: React.FC = () => {
       
       if (newTransaction.type === 'Compra') {
         if (assetIndex >= 0) {
-          // Atualizar ativo existente
+          // --- ATUALIZAÇÃO DE COMPRA (Preço Médio Ponderado) ---
           const asset = prevAssets[assetIndex];
           const newQty = asset.quantity + newTransaction.quantity;
           const newTotalCost = asset.totalCost + newTransaction.total;
+          
+          // Novo Preço Médio = Custo Total Acumulado / Nova Quantidade Total
           const newAvgPrice = newTotalCost / newQty;
           
           const updatedAsset = {
@@ -131,7 +133,8 @@ const App: React.FC = () => {
             quantity: newQty,
             totalCost: newTotalCost,
             averagePrice: newAvgPrice,
-            // Atualiza valor total assumindo preço atual de mercado (se disponível) ou preço pago
+            // Atualiza valor total usando preço de mercado atual (se disponível) ou preço da compra
+            // Isso evita "pulos" visuais estranhos até a API atualizar
             totalValue: asset.currentPrice * newQty 
           };
           
@@ -139,13 +142,15 @@ const App: React.FC = () => {
           newList[assetIndex] = updatedAsset;
           return newList;
         } else {
-          // Criar novo ativo
+          // --- NOVO ATIVO ---
+          const isFII = newTransaction.ticker.endsWith('11') || newTransaction.ticker.endsWith('34') || newTransaction.ticker.endsWith('39');
+          
           const newAsset: Asset = {
             id: newTransaction.ticker,
             ticker: newTransaction.ticker,
             shortName: newTransaction.ticker.substring(0, 4),
             companyName: newTransaction.ticker,
-            assetType: newTransaction.ticker.length > 5 || newTransaction.ticker.endsWith('11') ? 'FII' : 'Ação',
+            assetType: isFII ? 'FII' : 'Ação',
             quantity: newTransaction.quantity,
             currentPrice: newTransaction.price,
             totalValue: newTransaction.total,
@@ -155,7 +160,7 @@ const App: React.FC = () => {
             lastDividend: 0,
             lastDividendDate: '',
             dy12m: 0,
-            color: '#' + Math.floor(Math.random()*16777215).toString(16),
+            color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
             pvp: 1,
             vp: newTransaction.price,
             liquidity: 'N/A',
@@ -163,38 +168,42 @@ const App: React.FC = () => {
             segment: 'Outros',
             allocationType: 'Outros'
           };
-          return [...prevAssets, newAsset];
+          return [newAsset, ...prevAssets]; // Adiciona no topo da lista
         }
       } else {
-         // Venda
+         // --- VENDA (Manutenção de Preço Médio) ---
          if (assetIndex >= 0) {
            const asset = prevAssets[assetIndex];
            const newQty = Math.max(0, asset.quantity - newTransaction.quantity);
            
            if (newQty === 0) {
+             // Vendeu tudo: remove da carteira
              return prevAssets.filter(a => a.ticker !== newTransaction.ticker);
            }
            
-           // Reduz custo total proporcionalmente
-           const costRemoved = asset.averagePrice * newTransaction.quantity;
-           const newTotalCost = Math.max(0, asset.totalCost - costRemoved);
+           // IMPORTANTE: Na venda, o Preço Médio (averagePrice) NÃO muda.
+           // O Custo Total é reduzido proporcionalmente à quantidade vendida baseada no PM.
+           // Novo Custo = Nova Quantidade * Preço Médio Antigo
+           const newTotalCost = newQty * asset.averagePrice;
            
            const updatedAsset = {
              ...asset,
              quantity: newQty,
              totalCost: newTotalCost,
+             averagePrice: asset.averagePrice, // Mantém o PM intacto
              totalValue: asset.currentPrice * newQty
            };
            const newList = [...prevAssets];
            newList[assetIndex] = updatedAsset;
            return newList;
          }
+         // Se tentar vender algo que não tem, ignora (ou poderia lançar erro)
          return prevAssets;
       }
     });
 
-    // Tenta buscar dados atualizados do novo ativo
-    setTimeout(() => refreshMarketData(), 1000);
+    // Tenta buscar dados atualizados do novo ativo imediatamente
+    setTimeout(() => refreshMarketData(), 800);
   }, [refreshMarketData]);
 
   useEffect(() => {
