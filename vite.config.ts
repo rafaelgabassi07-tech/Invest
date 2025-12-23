@@ -1,4 +1,3 @@
-
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -10,13 +9,6 @@ export default defineConfig({
     sourcemap: false
   },
   server: {
-    port: 3000,
-    host: true,
-    hmr: {
-      clientPort: 443
-    }
-  },
-  resolve: {
-    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json']
+    port: 3000
   }
 })

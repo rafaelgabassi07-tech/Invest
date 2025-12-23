@@ -1,14 +1,14 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { FinancialSummary, PortfolioItem, Asset } from "../types";
+import { FinancialSummary, PortfolioItem } from "../types";
 
 export const getFinancialAdvice = async (
   query: string, 
   summary: FinancialSummary, 
-  portfolio: PortfolioItem[],
-  assets: Asset[]
+  portfolio: PortfolioItem[]
 ): Promise<string> => {
   try {
+    // Check for API key presence to avoid internal ReferenceErrors
     const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
     
     if (!apiKey) {
@@ -18,26 +18,15 @@ export const getFinancialAdvice = async (
 
     const ai = new GoogleGenAI({ apiKey });
     
-    const assetDetails = assets.map(a => 
-      `- ${a.ticker} (${a.assetType}): ${a.quantity} cotas. PM: R$${a.averagePrice.toFixed(2)}. Atual: R$${a.currentPrice.toFixed(2)}. Total: R$${a.totalValue.toFixed(2)}`
-    ).join('\n');
-
     const systemInstruction = `
       Você é um consultor financeiro sênior especializado no mercado brasileiro (B3).
+      Sua missão é educar e orientar estrategicamente, sem prometer ganhos fáceis.
       
-      DADOS:
+      Contexto Atual do Usuário:
       - Patrimônio: R$ ${summary.totalBalance.toLocaleString('pt-BR')}
       - Investido: R$ ${summary.totalInvested.toLocaleString('pt-BR')}
-      - Lucro: R$ ${summary.capitalGain.toLocaleString('pt-BR')}
       - DY: ${summary.yieldOnCost.toFixed(2)}%
-      
-      CARTEIRA:
-      ${assetDetails}
-      
-      ALOCAÇÃO:
-      ${portfolio.map(p => `- ${p.name}: ${p.percentage}%`).join('\n')}
-
-      Responda de forma estratégica, direta e em Português do Brasil.
+      - Composição: ${portfolio.map(p => `${p.name} (${p.percentage}%)`).join(', ')}
     `;
 
     const response = await ai.models.generateContent({
@@ -52,7 +41,7 @@ export const getFinancialAdvice = async (
 
     return response.text || "Desculpe, não consegui processar sua análise agora.";
   } catch (error) {
-    console.error("[Gemini Advisor] Erro:", error);
-    return "Ocorreu um erro ao conectar com o serviço de IA.";
+    console.error("[Gemini Advisor] Erro de conexão:", error);
+    return "Ocorreu um erro ao conectar com o serviço de IA. Verifique sua conexão ou se a API_KEY é válida.";
   }
 };

@@ -65,8 +65,7 @@ export const PortfolioChart: React.FC<PortfolioChartProps> = ({ items, onClick }
                 ))}
                 </div>
 
-                {/* Estilo inline minWidth/minHeight crucial para evitar crash do Recharts se o CSS falhar */}
-                <div className="w-24 h-24 relative shrink-0" style={{ minWidth: '96px', minHeight: '96px' }}>
+                <div className="w-24 h-24 relative shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                     <Pie

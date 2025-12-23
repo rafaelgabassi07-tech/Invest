@@ -1,22 +1,20 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Bot, Lightbulb } from 'lucide-react';
 import { getFinancialAdvice } from '../services/geminiService';
-import { FinancialSummary, PortfolioItem, ChatMessage, Asset } from '../types';
+import { FinancialSummary, PortfolioItem, ChatMessage } from '../types';
 
 interface AIAdvisorProps {
   summary: FinancialSummary;
   portfolio: PortfolioItem[];
-  assets: Asset[];
 }
 
-export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio, assets }) => {
+export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: '1',
       role: 'model',
-      text: 'Olá! Sou seu assistente financeiro IA. Já analisei sua carteira atualizada. Como posso ajudar a otimizar seus investimentos hoje?',
+      text: 'Olá! Sou seu assistente financeiro IA. Posso analisar sua carteira e tirar dúvidas sobre seus investimentos. Como posso ajudar?',
       timestamp: new Date(),
     }
   ]);
@@ -49,8 +47,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio, assets
     setIsLoading(true);
 
     try {
-      // Passa 'assets' para o serviço para análise detalhada
-      const responseText = await getFinancialAdvice(userMsg.text, summary, portfolio, assets);
+      const responseText = await getFinancialAdvice(userMsg.text, summary, portfolio);
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
@@ -60,23 +57,16 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio, assets
       setMessages(prev => [...prev, aiMsg]);
     } catch (error) {
       console.error(error);
-      const errorMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'model',
-          text: "Tive um problema técnico. Tente novamente em instantes.",
-          timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const SUGGESTIONS = [
-    "Analise minha diversificação",
-    "Qual meu maior risco hoje?",
-    "Sugira melhorias na carteira",
-    "Resumo de performance"
+    "Resuma minha carteira",
+    "Estou diversificado?",
+    "Quanto recebo por ano?",
+    "Analise meu Yield"
   ];
 
   if (!isOpen) {
@@ -158,8 +148,8 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio, assets
 
         {/* Input & Suggestions */}
         <div className="border-t border-gray-100 dark:border-white/5 bg-white dark:bg-[#1c1c1e] flex flex-col">
-          {/* Suggestions */}
-          {messages.length < 5 && !isLoading && (
+          {/* Suggestions - Only show if few messages or last was from bot */}
+          {messages.length < 4 && !isLoading && (
              <div className="flex gap-2 p-3 overflow-x-auto custom-scrollbar bg-gray-50/50 dark:bg-[#1c1c1e]/50 backdrop-blur-sm border-b border-gray-100 dark:border-white/5">
                 {SUGGESTIONS.map((sugg, idx) => (
                     <button
@@ -184,7 +174,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ summary, portfolio, assets
                   handleSend();
                 }
               }}
-              placeholder="Digite sua dúvida..."
+              placeholder="Pergunte sobre seus investimentos..."
               rows={1}
               className="flex-1 bg-gray-100 dark:bg-[#2c2c2e] text-gray-900 dark:text-white text-sm rounded-2xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-brand-500/50 placeholder-gray-500 border border-transparent transition-all resize-none custom-scrollbar max-h-24 shadow-inner"
             />

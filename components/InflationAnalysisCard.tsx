@@ -55,8 +55,8 @@ export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ on
              </h2>
          </div>
 
-         {/* Sparkline Chart - Style fixed dimensions */}
-         <div className="h-10 w-24 relative mb-1 opacity-50" style={{ minWidth: '96px', minHeight: '40px' }}>
+         {/* Sparkline Chart */}
+         <div className="h-10 w-24 relative mb-1 opacity-50">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                     <defs>
