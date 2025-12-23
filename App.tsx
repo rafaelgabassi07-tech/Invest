@@ -52,9 +52,9 @@ const App: React.FC = () => {
     }
   });
 
-  // Reference to assets to allow access inside useCallback without adding to dependency array
-  // This breaks the infinite loop: fetch -> update assets -> recreate fetch -> run effect -> fetch
+  // Refs to break dependency cycles in callbacks
   const assetsRef = useRef(assets);
+  const isRefreshingRef = useRef(false);
 
   useEffect(() => {
       assetsRef.current = assets;
@@ -89,16 +89,21 @@ const App: React.FC = () => {
 
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
+  // Optimized refresh function: No dependencies, uses Ref for locking
   const refreshMarketData = useCallback(async () => {
-    // Access current assets via ref to avoid dependency loop
+    // 1. Check lock via Ref (instant, no re-render dependency)
+    if (isRefreshingRef.current) return;
+    
+    // 2. Check if we have assets to update
     const currentAssets = assetsRef.current;
+    if (currentAssets.length === 0) return;
     
-    if (isRefreshing || currentAssets.length === 0) return;
-    
+    // 3. Set lock and UI state
+    isRefreshingRef.current = true;
     setIsRefreshing(true);
+
     try {
         const tickers = currentAssets.map(a => a.ticker);
-        // Brapi service now has internal caching to prevent spam
         const liveData = await fetchTickersData(tickers);
         
         if (liveData && liveData.length > 0) {
@@ -116,14 +121,15 @@ const App: React.FC = () => {
     } catch (err) {
         console.error("[App] Erro de mercado:", err);
     } finally {
+        // 4. Release lock
+        isRefreshingRef.current = false;
         setIsRefreshing(false);
     }
-  }, [isRefreshing]); // Removed 'assets' from dependency
+  }, []); 
 
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
     if (newData.assets) setAssets(newData.assets);
     if (newData.transactions) setTransactions(newData.transactions);
-    // Refresh triggered safely via timeout, but now logic is protected by Ref and Service Cache
     setTimeout(() => refreshMarketData(), 500);
   }, [refreshMarketData]);
 
@@ -232,6 +238,7 @@ const App: React.FC = () => {
   // Initial load only
   useEffect(() => {
     if (!isAppLoading) {
+        // Safe to call, internal logic handles locking
         refreshMarketData();
     }
   }, [isAppLoading, refreshMarketData]);

@@ -6,6 +6,7 @@
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de cache
+const THROTTLE_DELAY = 3000; // Mínimo 3 segundos entre chamadas de rede reais
 
 // Cache em memória simples
 interface CacheData {
@@ -15,6 +16,7 @@ interface CacheData {
 }
 
 let requestCache: CacheData | null = null;
+let lastRequestTime = 0;
 
 // Função robusta para pegar o token, priorizando a variável de ambiente do Vite (Vercel)
 const getBrapiToken = (): string => {
@@ -32,7 +34,7 @@ const getBrapiToken = (): string => {
     return process.env.VITE_BRAPI_TOKEN;
   }
 
-  // 3. Fallback: Token hardcoded fornecido
+  // 3. Fallback: Token hardcoded fornecido pelo usuário
   return 'qQubkDBNuT4NmqDc8MP7Hx';
 };
 
@@ -46,17 +48,23 @@ export const fetchTickersData = async (tickers: string[]) => {
     return [];
   }
 
-  // Ordenar tickers para gerar uma chave de cache consistente
-  const sortedTickers = [...tickers].sort().join(',');
   const now = Date.now();
+  const sortedTickers = [...tickers].sort().join(',');
 
-  // Verificar Cache
+  // 1. Verificar Cache
   if (requestCache && requestCache.key === sortedTickers && (now - requestCache.timestamp < CACHE_DURATION)) {
-    console.log("[BRAPI] Usando dados em cache (economia de requisição)");
+    console.log("[BRAPI] Cache Hit (Economia de Requisição)");
     return requestCache.data;
+  }
+
+  // 2. Verificar Throttle (Impede chamadas muito rápidas)
+  if (now - lastRequestTime < THROTTLE_DELAY) {
+    console.log("[BRAPI] Throttled (Chamada muito frequente, ignorando)");
+    return requestCache ? requestCache.data : [];
   }
   
   console.log(`[BRAPI] Solicitando cotações via token: ${BRAPI_TOKEN.substring(0, 4)}...`);
+  lastRequestTime = now;
   
   try {
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${sortedTickers}?token=${BRAPI_TOKEN}`);
@@ -95,6 +103,14 @@ export const fetchTickersData = async (tickers: string[]) => {
 
 export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo') => {
   if (!BRAPI_TOKEN) return [];
+
+  // Throttle simples para histórico também
+  const now = Date.now();
+  if (now - lastRequestTime < 1000) {
+      // 1 segundo de espera mínima para chamadas de histórico
+      return []; 
+  }
+  lastRequestTime = now;
 
   try {
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}`);
