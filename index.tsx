@@ -20,6 +20,19 @@ if (rootElement) {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js').catch(console.warn);
+    // Evita erros de origem cruzada em ambientes de preview como ai.studio ou stackblitz
+    const isPreviewEnv = window.location.hostname.includes('ai.studio') || 
+                         window.location.hostname.includes('webcontainer') ||
+                         window.location.hostname.includes('stackblitz');
+
+    if (isPreviewEnv) {
+      console.log('[SW] Service Worker ignorado no ambiente de preview.');
+      return;
+    }
+
+    navigator.serviceWorker.register('./service-worker.js').catch((err) => {
+      // Usa log em vez de warn para não poluir o console com erros esperados
+      console.log('[SW] Falha no registro (esperado em dev):', err.message);
+    });
   });
 }

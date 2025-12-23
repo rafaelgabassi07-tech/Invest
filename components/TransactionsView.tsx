@@ -111,7 +111,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
                     </button>
                 </div>
 
-                <div className="h-28 w-full opacity-80">
+                {/* Style minHeight added */}
+                <div className="h-28 w-full opacity-80" style={{ minHeight: '112px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={chartData} barGap={4}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#88888815" />
@@ -162,7 +163,6 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({ transactions
 
       {/* 3. Grouped List Section */}
       <div className="px-6 mt-6 space-y-10">
-         {/* Fix: Explicitly cast Object.entries(groupedList) to ensure 'items' is inferred as Transaction[] instead of unknown. */}
          {(Object.entries(groupedList) as [string, Transaction[]][]).map(([dateGroup, items], groupIndex) => (
             <div key={dateGroup} className="animate-slide-up" style={{ animationDelay: `${groupIndex * 50}ms` }}>
                 {/* Month/Year Label */}
