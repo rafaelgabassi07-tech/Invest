@@ -35,9 +35,15 @@ export const AssetCard = memo(({ asset, index, onClick }: AssetCardProps) => {
       >
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white text-[10px] shadow-md transition-transform group-hover:scale-105 border border-white/10" style={{ backgroundColor: asset.color }}>
-                {asset.shortName}
-            </div>
+             {asset.image ? (
+                 <div className="w-12 h-12 rounded-2xl p-1 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 shadow-md overflow-hidden flex items-center justify-center transition-transform group-hover:scale-105">
+                     <img src={asset.image} alt={asset.ticker} className="w-full h-full object-contain" />
+                 </div>
+             ) : (
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-white text-[10px] shadow-md transition-transform group-hover:scale-105 border border-white/10" style={{ backgroundColor: asset.color }}>
+                    {asset.shortName}
+                </div>
+             )}
           </div>
           <div className="flex flex-col gap-0.5">
             <h3 className="font-bold text-base text-gray-900 dark:text-white tracking-tight leading-none">{asset.ticker}</h3>

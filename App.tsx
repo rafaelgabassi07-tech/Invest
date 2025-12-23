@@ -140,11 +140,11 @@ const App: React.FC = () => {
               let lastDivDate = asset.lastDividendDate;
               
               // Atualiza dividendos se disponíveis na API
+              // A BRAPI com fundamental=true pode retornar dividendsData
               if (live.dividendsData?.cashDividends?.length > 0) {
                   const sortedDivs = [...live.dividendsData.cashDividends].sort((a: any, b: any) => 
                       new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
                   );
-                  // Pega o mais recente pagável ou pago
                   const latest = sortedDivs[0];
                   if (latest) {
                     lastDiv = latest.rate;
@@ -158,13 +158,15 @@ const App: React.FC = () => {
                 totalValue: (live.regularMarketPrice || asset.currentPrice) * asset.quantity,
                 dailyChange: live.regularMarketChangePercent || 0,
                 companyName: live.longName || asset.companyName,
+                image: live.logourl || asset.image, // Captura o Logo
                 pvp: live.priceToBook || asset.pvp || 1,
                 pl: live.priceEarnings || asset.pl || 0,
                 lastDividend: lastDiv,
                 lastDividendDate: lastDivDate,
-                dy12m: live.dividendYield || asset.dy12m || 0, // BRAPI usa dividendYield
+                dy12m: live.dividendYield || asset.dy12m || 0,
                 liquidity: live.regularMarketVolume ? live.regularMarketVolume.toLocaleString('pt-BR') : asset.liquidity,
-                sector: live.sector || asset.segment // Tenta atualizar setor
+                // Mapeia o setor vindo da API para o segmento, fallback para o que já existia
+                segment: live.sector || asset.segment 
               };
           }));
         }

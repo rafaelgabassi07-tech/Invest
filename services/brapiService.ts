@@ -35,7 +35,8 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
   try {
     logApiRequest('brapi');
     const ts = new Date().getTime();
-    const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}&ts=${ts}`, {
+    // Adicionado fundamental=true para garantir dados ricos se necessário, embora para histórico o foco seja preço
+    const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}&fundamental=true&ts=${ts}`, {
         cache: 'no-store'
     });
     
@@ -64,6 +65,7 @@ export const fetchTickersData = async (tickers: string[]) => {
   const uniqueTickers = [...new Set(tickers)].filter(t => t && t.length > 0);
   if (uniqueTickers.length === 0) return [];
 
+  // FIX: Não usar encodeURIComponent na lista inteira de uma vez, pois a BRAPI espera vírgulas literais
   const tickersString = uniqueTickers.join(',');
   const ts = new Date().getTime();
 
@@ -71,8 +73,8 @@ export const fetchTickersData = async (tickers: string[]) => {
     logApiRequest('brapi');
     
     // Chamada única para múltiplos ativos
-    // Importante: encodeURIComponent é usado para garantir segurança da URL
-    const url = `${BRAPI_BASE_URL}/quote/${encodeURIComponent(tickersString)}?token=${BRAPI_TOKEN}&ts=${ts}`;
+    // FIX: Adicionado 'fundamental=true' para trazer setor, logo e dividendos detalhados
+    const url = `${BRAPI_BASE_URL}/quote/${tickersString}?token=${BRAPI_TOKEN}&fundamental=true&ts=${ts}`;
     
     const response = await fetch(url, {
       cache: 'no-store',
@@ -105,4 +107,3 @@ export const fetchTickersData = async (tickers: string[]) => {
     return [];
   }
 };
-    

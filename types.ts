@@ -34,6 +34,7 @@ export interface Asset {
   lastDividendDate: string;
   dy12m: number;
   color: string;
+  image?: string; // Novo campo para Logo
   pvp: number;
   vp: number;
   liquidity: string;
