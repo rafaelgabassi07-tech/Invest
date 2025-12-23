@@ -4,21 +4,16 @@
  * Documentation: https://brapi.dev/docs
  */
 
-// Helper to safely get environment variables without crashing in browser
 const getSafeEnv = (key: string): string => {
   try {
     // @ts-ignore
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
-      return process.env[key];
-    }
-    return '';
+    return (process.env && process.env[key]) || '';
   } catch {
     return '';
   }
 };
 
 const BRAPI_TOKEN = getSafeEnv('VITE_BRAPI_TOKEN') || 
-                    getSafeEnv('BRAPI_TOKEN_API') || 
                     getSafeEnv('BRAPI_TOKEN') || 
                     ''; 
 
@@ -28,30 +23,22 @@ export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length) return [];
   
   if (!BRAPI_TOKEN) {
-    console.warn("[BRAPI] Alerta: Token ausente. Dados reais não serão carregados. Configure BRAPI_TOKEN no Vercel.");
+    console.warn("[BRAPI] Token não configurado. Exibindo dados de exemplo.");
     return [];
   }
-  
-  console.log(`[BRAPI] Solicitando cotações: ${tickers.join(', ')}`);
   
   try {
     const list = tickers.join(',');
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${list}?token=${BRAPI_TOKEN}`);
     
-    if (response.status === 401) {
-        console.error("[BRAPI] Erro 401: Token inválido ou expirado. Verifique sua chave em brapi.dev.");
+    if (!response.ok) {
         return [];
     }
     
-    if (!response.ok) {
-        throw new Error(`BRAPI API Response Error: ${response.status}`);
-    }
-    
     const data = await response.json();
-    console.log("[BRAPI] Dados de mercado atualizados com sucesso.");
     return data.results || [];
   } catch (error) {
-    console.error("[BRAPI] Falha crítica na busca de dados:", error);
+    console.error("[BRAPI] Erro na requisição:", error);
     return [];
   }
 };
@@ -61,7 +48,6 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
 
   try {
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}`);
-    
     if (!response.ok) return [];
 
     const data = await response.json();
@@ -74,7 +60,6 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
     }
     return [];
   } catch (error) {
-    console.error(`[BRAPI] Erro no histórico (${ticker}):`, error);
     return [];
   }
 };
