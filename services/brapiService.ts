@@ -1,7 +1,7 @@
 
 /**
- * BRAPI Service for Brazilian Market Data
- * Documentation: https://brapi.dev/docs
+ * BRAPI Service for Brazilian Market Data (B3)
+ * Documentação: https://brapi.dev/docs
  */
 
 const getSafeEnv = (key: string): string => {
@@ -13,17 +13,21 @@ const getSafeEnv = (key: string): string => {
   }
 };
 
-const BRAPI_TOKEN = getSafeEnv('VITE_BRAPI_TOKEN') || 
-                    getSafeEnv('BRAPI_TOKEN') || 
+// Tenta obter o token de diferentes possíveis nomes de variáveis no ambiente
+const BRAPI_TOKEN = getSafeEnv('BRAPI_TOKEN') || 
+                    getSafeEnv('VITE_BRAPI_TOKEN') || 
                     ''; 
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
 
+/**
+ * Busca cotações atuais de uma lista de tickers
+ */
 export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length) return [];
   
   if (!BRAPI_TOKEN) {
-    console.warn("[BRAPI] Token não configurado. Exibindo dados de exemplo.");
+    console.warn("[BRAPI] Aviso: Token da API não configurado. Para dados reais, adicione BRAPI_TOKEN ao ambiente.");
     return [];
   }
   
@@ -32,17 +36,21 @@ export const fetchTickersData = async (tickers: string[]) => {
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${list}?token=${BRAPI_TOKEN}`);
     
     if (!response.ok) {
+        if (response.status === 401) console.error("[BRAPI] Erro: Token inválido.");
         return [];
     }
     
     const data = await response.json();
     return data.results || [];
   } catch (error) {
-    console.error("[BRAPI] Erro na requisição:", error);
+    console.error("[BRAPI] Falha de rede ou API:", error);
     return [];
   }
 };
 
+/**
+ * Busca dados históricos para os gráficos de detalhes
+ */
 export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo') => {
   if (!BRAPI_TOKEN) return [];
 
@@ -60,6 +68,7 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
     }
     return [];
   } catch (error) {
+    console.error(`[BRAPI] Erro histórico (${ticker}):`, error);
     return [];
   }
 };
