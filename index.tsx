@@ -18,14 +18,17 @@ if (rootElement) {
   );
 }
 
-// Global update handler
+// Variável para armazenar o worker que está esperando
 let waitingWorker: ServiceWorker | null = null;
 
-// Função chamada quando o usuário clica em "Atualizar"
+// Função global chamada pelo botão da notificação
 window.updateApp = () => {
     if (waitingWorker) {
-        console.log('[SW] User confirmed update. Sending SKIP_WAITING.');
+        console.log('[SW] Usuário confirmou atualização. Enviando SKIP_WAITING.');
         waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    } else {
+        console.log('[SW] Nenhum worker esperando atualização.');
+        window.location.reload(); // Fallback
     }
 };
 
@@ -33,20 +36,21 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
       .then(registration => {
-        console.log('[SW] Registered with scope:', registration.scope);
+        console.log('[SW] Registrado. Escopo:', registration.scope);
 
-        // Se já existe um worker esperando (atualização baixada mas não ativada)
+        // Caso 1: O navegador já baixou e o worker está esperando desde um load anterior
         if (registration.waiting) {
             waitingWorker = registration.waiting;
             window.dispatchEvent(new Event('invest-update-available'));
         }
 
+        // Caso 2: Uma nova atualização foi encontrada agora
         registration.onupdatefound = () => {
             const installingWorker = registration.installing;
             if (installingWorker) {
                 installingWorker.onstatechange = () => {
-                    // Se chegou no estado 'installed' e já existe um controlador,
-                    // significa que é uma atualização esperando ação.
+                    // Se instalou com sucesso, mas ainda temos um controller ativo (app rodando)
+                    // então ele entra em 'installed' (que é semanticamente 'waiting' para ativação)
                     if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
                         waitingWorker = installingWorker;
                         window.dispatchEvent(new Event('invest-update-available'));
@@ -55,13 +59,11 @@ if ('serviceWorker' in navigator) {
             }
         };
       })
-      .catch(error => {
-        console.warn('[SW] Registration failed:', error);
-      });
+      .catch(error => console.warn('[SW] Falha no registro:', error));
       
-    // Quando o novo worker assume o controle (após skipWaiting), recarregamos
+    // Quando o novo worker assume (pós skipWaiting), recarregamos a página
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[SW] Controller changed, reloading...');
+        console.log('[SW] Controlador alterado. Recarregando app...');
         window.location.reload();
     });
   });

@@ -13,7 +13,7 @@ import { IncomeReportCard } from './components/IncomeReportCard.tsx';
 import { EvolutionCard } from './components/EvolutionCard.tsx'; 
 import { TransactionsView } from './components/TransactionsView.tsx';
 import { SettingsView } from './components/SettingsView.tsx';
-import { NotificationsView } from './components/NotificationsView.tsx'; // Ensure imported
+import { NotificationsView } from './components/NotificationsView.tsx';
 import { AIAdvisor } from './components/AIAdvisor.tsx';
 import { AddTransactionModal } from './components/AddTransactionModal.tsx';
 import { Asset, Transaction, AppTheme, AppNotification } from './types.ts';
@@ -41,7 +41,7 @@ const App: React.FC = () => {
   
   // Notification State
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false); // Toggle view
+  const [showNotifications, setShowNotifications] = useState(false);
   
   const [assets, setAssets] = useState<Asset[]>(() => {
     try {
@@ -75,22 +75,21 @@ const App: React.FC = () => {
     } catch (e) { return AVAILABLE_THEMES[0]; }
   });
 
-  // Listen for Updates
+  // SISTEMA DE ATUALIZAÇÃO: Escuta evento do Service Worker
   useEffect(() => {
     const handleUpdateAvailable = () => {
         setNotifications(prev => {
-            // Avoid duplicates
-            if (prev.some(n => n.type === 'system')) return prev;
+            if (prev.some(n => n.type === 'system')) return prev; // Evita duplicatas
             
             const newNotif: AppNotification = {
-                id: 99999, // High ID to stay on top if sorted
+                id: 999999, // ID alto para ficar no topo se ordenado
                 title: "Atualização Disponível",
-                message: "Uma nova versão do app foi baixada. Toque para aplicar.",
+                message: "Uma nova versão do app está pronta. Toque para instalar.",
                 time: "Agora",
                 type: "system",
                 read: false,
                 group: "Hoje",
-                actionLabel: "Instalar Agora",
+                actionLabel: "Instalar Agora 🚀",
                 onAction: () => {
                     if (window.updateApp) window.updateApp();
                 }
@@ -352,6 +351,7 @@ const App: React.FC = () => {
             {modalOpen === 'realPower' && <RealPowerModal onClose={() => setModalOpen(null)} />}
             {modalOpen === 'dividendCalendar' && <DividendCalendarModal assets={assets} onClose={() => setModalOpen(null)} />}
             {modalOpen === 'incomeReport' && <IncomeReportModal assets={assets} onClose={() => setModalOpen(null)} />}
+            {/* CORREÇÃO CRÍTICA: Passando transactions para o EvolutionModal */}
             {modalOpen === 'evolution' && <EvolutionModal onClose={() => setModalOpen(null)} totalValue={summaryData.totalBalance} />}
             {modalOpen === 'portfolio' && <PortfolioModal assets={assets} totalValue={summaryData.totalBalance} onClose={() => setModalOpen(null)} />}
         </Suspense>

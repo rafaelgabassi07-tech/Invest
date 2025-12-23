@@ -22,10 +22,8 @@ export interface Asset {
   shortName: string;
   companyName: string;
   assetType: string;
-  // New Fields for Structure Analysis
-  segment: string;       // e.g., "Logística", "Papel", "Fiagro", "Bancário"
-  allocationType: string; // e.g., "Imóveis Físicos", "Certificados (CRI)", "CRA", "Ações"
-  
+  segment: string;
+  allocationType: string;
   quantity: number;
   currentPrice: number;
   totalValue: number;
@@ -36,32 +34,24 @@ export interface Asset {
   lastDividendDate: string;
   dy12m: number;
   color: string;
-  
-  // Detail View Fields
   pvp: number;
   vp: number;
   liquidity: string;
   netWorth: string;
-  
-  // Expanded Data
   min52w?: number;
   max52w?: number;
   volatility?: number;
   cnpj?: string;
-  administrator?: string; // Gestora ou Admin
-
-  // FII Specific (Optional)
-  vacancy?: number; // Vacância Física
+  administrator?: string;
+  vacancy?: number;
   financialVacancy?: number; 
-  assetsCount?: number; // Quantidade de imóveis ou ativos
+  assetsCount?: number;
   adminFee?: string;
-
-  // Stock Specific (Optional)
-  pl?: number;    // Preço / Lucro
-  roe?: number;   // Return on Equity
-  netMargin?: number; // Margem Líquida
-  debtEbitda?: number; // Dívida Líquida / EBITDA
-  lpa?: number; // Lucro por Ação
+  pl?: number;
+  roe?: number;
+  netMargin?: number;
+  debtEbitda?: number;
+  lpa?: number;
 }
 
 export interface Dividend {
@@ -96,11 +86,11 @@ export interface AppTheme {
   name: string;
   type: 'dark' | 'light';
   colors: {
-    primary: string;   // Main Brand Color
-    secondary: string; // Darker/Richer Shade
-    accent: string;    // Contrast/Pop Color
-    highlight: string; // Lighter Tint for backgrounds
-    muted: string;     // Subtle/Border color
+    primary: string;
+    secondary: string;
+    accent: string;
+    highlight: string;
+    muted: string;
   };
   preview: string;
 }
@@ -114,5 +104,5 @@ export interface AppNotification {
   read: boolean;
   group: string;
   actionLabel?: string; // Botão de ação
-  onAction?: () => void; // Função de callback
+  onAction?: () => void; // Callback do botão
 }

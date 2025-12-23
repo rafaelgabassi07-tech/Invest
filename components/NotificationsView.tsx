@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, DollarSign, FileText, ShieldAlert, TrendingUp, CheckCircle2, ListFilter, SlidersHorizontal, ArrowDownCircle, Info } from 'lucide-react';
+import { Bell, DollarSign, FileText, ShieldAlert, TrendingUp, CheckCircle2, ListFilter, ArrowDownCircle } from 'lucide-react';
 import { AppNotification } from '../types';
 
 interface NotificationsViewProps {

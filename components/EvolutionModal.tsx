@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { ChevronLeft, TrendingUp, X } from 'lucide-react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Transaction } from '../types';
@@ -7,27 +7,25 @@ import { Transaction } from '../types';
 interface EvolutionModalProps {
   onClose: () => void;
   totalValue: number;
+  transactions?: Transaction[]; // Opcional, mas idealmente passado pelo pai
 }
 
-export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalValue }) => {
-  // Como EvolutionModal não estava recebendo as transações no App.tsx anteriormente, 
-  // vamos usar um fallback ou ler do localStorage para garantir funcionamento,
-  // mas o ideal é que App.tsx passe 'transactions' como prop.
-  // Vou assumir que o usuário vai passar transactions na correção do App.tsx ou
-  // vou ler do localStorage aqui para garantir autonomia do componente se necessário.
+export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalValue, transactions = [] }) => {
   
-  const [transactions] = useState<Transaction[]>(() => {
+  // Utiliza as transações passadas via props, ou tenta fallback local apenas se vazio
+  const localTransactions = useMemo(() => {
+      if (transactions && transactions.length > 0) return transactions;
       try {
           const saved = localStorage.getItem('invest_transactions');
           return saved ? JSON.parse(saved) : [];
       } catch { return []; }
-  });
+  }, [transactions]);
 
   const chartData = useMemo(() => {
-    if (transactions.length === 0) return [];
+    if (localTransactions.length === 0) return [];
     
     // 1. Ordenar transações cronologicamente
-    const sorted = [...transactions].sort((a, b) => {
+    const sorted = [...localTransactions].sort((a: Transaction, b: Transaction) => {
         const parseDate = (d: string) => {
             const ms: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
             const p = d.split(' ');
@@ -39,9 +37,9 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
 
     // 2. Acumular saldo patrimonial (Investido)
     let currentInvested = 0;
-    const historyPoints: { date: string, value: number, originalDate: number }[] = [];
+    const historyPoints: { date: string, value: number }[] = [];
 
-    sorted.forEach(t => {
+    sorted.forEach((t: Transaction) => {
         // Lógica de Acúmulo: Compra aumenta base, Venda diminui base
         if (t.type === 'Compra') currentInvested += t.total;
         else currentInvested -= t.total;
@@ -50,20 +48,16 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
         const parts = t.date.split(' ');
         const shortDate = `${parts[1]}/${parts[2].slice(2)}`;
         
-        // Evitar pontos duplicados exatos visualmente, pegamos o saldo final do dia/movimento
         historyPoints.push({
             date: shortDate,
             value: currentInvested,
-            originalDate: Date.now() // placeholder, sorting já foi feito
         });
     });
 
-    // Se tiver muitos pontos, filtrar para não poluir
-    // Pegar o último saldo de cada mês
+    // Filtragem para evitar excesso de pontos (pega o último de cada mês)
     const filteredPoints: typeof historyPoints = [];
     const seenMonths = new Set();
     
-    // Percorrer de trás para frente para pegar o saldo final do mês
     for (let i = historyPoints.length - 1; i >= 0; i--) {
         if (!seenMonths.has(historyPoints[i].date)) {
             filteredPoints.unshift(historyPoints[i]);
@@ -71,25 +65,17 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
         }
     }
     
-    // Adicionar ponto atual se necessário
-    if (filteredPoints.length > 0) {
-        // O valor total atual (com valorização) vs o valor investido acumulado
-        // Aqui mostramos a curva de CUSTO (Investido) vs TEMPO
-        // Para mostrar Valor de Mercado precisariamos de histórico de preços
-        // Vamos mostrar o Valor Investido Acumulado
-    }
-
     return filteredPoints;
-  }, [transactions]);
+  }, [localTransactions]);
 
   const stats = useMemo(() => {
-     const invested = transactions.filter(t => t.type === 'Compra').reduce((a, b) => a + b.total, 0) - 
-                      transactions.filter(t => t.type === 'Venda').reduce((a, b) => a + b.total, 0);
+     const invested = localTransactions.filter((t: Transaction) => t.type === 'Compra').reduce((a: number, b: Transaction) => a + b.total, 0) - 
+                      localTransactions.filter((t: Transaction) => t.type === 'Venda').reduce((a: number, b: Transaction) => a + b.total, 0);
      const profit = totalValue - invested;
      const profitPercent = invested > 0 ? (profit / invested) * 100 : 0;
      
      return { invested, profit, profitPercent };
-  }, [transactions, totalValue]);
+  }, [localTransactions, totalValue]);
 
   return (
     <div className="fixed inset-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
