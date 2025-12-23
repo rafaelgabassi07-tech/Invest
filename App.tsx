@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback, useRef } from 'react';
 import { Header } from './components/Header.tsx';
 import { SummaryCard } from './components/SummaryCard.tsx';
@@ -122,7 +123,7 @@ const App: React.FC = () => {
     setIsRefreshing(true);
 
     try {
-        const tickers: string[] = [...new Set(currentAssets.map(a => a.ticker))]; // Unique tickers
+        const tickers: string[] = Array.from(new Set(currentAssets.map(a => a.ticker))); // Unique tickers
         console.log(`[App] Atualizando ${tickers.length} ativos...`);
         
         const liveData = await fetchTickersData(tickers);

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR" class="dark">
   <head>
@@ -11,11 +12,9 @@
     <title>Invest Dashboard</title>
     <script>
       // Global shim for process.env
-      // API Key configurada manualmente para uso restrito.
+      // A API Key agora é injetada via Variáveis de Ambiente (Vite/Vercel) durante o build.
       window.process = window.process || { 
-        env: {
-          API_KEY: 'AIzaSyAlYnpoiYoOjKvTPmiXvp344WmSrijze3o'
-        } 
+        env: {} 
       };
       window.global = window;
     </script>

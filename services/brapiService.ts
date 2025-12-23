@@ -12,9 +12,6 @@ const CACHE_DURATION = 2 * 60 * 1000;
 // Cache Granular
 const tickerCache = new Map<string, { timestamp: number; data: any }>();
 
-// Map para evitar múltiplas requisições simultâneas para o mesmo ticker
-const inflightRequests = new Map<string, Promise<any>>();
-
 export const getBrapiToken = (): string => {
   // @ts-ignore
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BRAPI_TOKEN) {
@@ -26,70 +23,7 @@ export const getBrapiToken = (): string => {
 
 const BRAPI_TOKEN = getBrapiToken();
 
-const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
-  if (!ticker) return null;
-
-  const now = Date.now();
-  const cached = tickerCache.get(ticker);
-
-  if (cached && (now - cached.timestamp < CACHE_DURATION)) {
-    return cached.data;
-  }
-
-  if (inflightRequests.has(ticker)) {
-    return inflightRequests.get(ticker);
-  }
-
-  const fetchPromise = (async () => {
-    try {
-      logApiRequest('brapi');
-      
-      // Adiciona timestamp para bustar cache de CDN/Vercel Edge
-      const ts = new Date().getTime();
-      const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}&ts=${ts}`, {
-        method: 'GET',
-        cache: 'no-store', // CRÍTICO: Evita que o navegador/Vercel cacheie a resposta da API
-        headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-        }
-      });
-
-      if (response.status === 429) {
-        console.warn(`[BRAPI] Rate limit atingido para ${ticker}`);
-        return cached ? cached.data : null;
-      }
-
-      if (!response.ok) return null;
-
-      const json = await response.json();
-      const result = json.results && json.results.length > 0 ? json.results[0] : null;
-
-      if (result) {
-        tickerCache.set(ticker, { timestamp: now, data: result });
-      }
-      return result;
-    } catch (error) {
-      console.error(`[BRAPI] Erro em ${ticker}:`, error);
-      return cached ? cached.data : null;
-    } finally {
-      inflightRequests.delete(ticker);
-    }
-  })();
-
-  inflightRequests.set(ticker, fetchPromise);
-  return fetchPromise;
-};
-
-export const fetchTickersData = async (tickers: string[]) => {
-  if (!tickers.length || !BRAPI_TOKEN) return [];
-  // Fazemos chamadas individuais em paralelo para maximizar sucesso parcial
-  const promises = tickers.map(ticker => fetchSingleTicker(ticker));
-  const results = await Promise.all(promises);
-  return results.filter(item => item !== null);
-};
-
+// Função para buscar dados históricos (mantida individual)
 export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo') => {
   if (!BRAPI_TOKEN) return [];
   const cacheKey = `${ticker}_history_${range}_${interval}`;
@@ -118,6 +52,51 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
     }
     return [];
   } catch (error) {
+    return [];
+  }
+};
+
+// Nova implementação usando Batch Request (vários tickers em uma única chamada)
+export const fetchTickersData = async (tickers: string[]) => {
+  if (!tickers.length || !BRAPI_TOKEN) return [];
+  
+  // Remove duplicatas e cria string separada por vírgulas (ex: PETR4,VALE3,ITUB4)
+  const uniqueTickers = [...new Set(tickers)];
+  const tickersString = uniqueTickers.join(',');
+  const ts = new Date().getTime();
+
+  try {
+    logApiRequest('brapi');
+    
+    // Chamada única para múltiplos ativos
+    const response = await fetch(`${BRAPI_BASE_URL}/quote/${tickersString}?token=${BRAPI_TOKEN}&ts=${ts}`, {
+      cache: 'no-store',
+      headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+      }
+    });
+
+    if (!response.ok) {
+        console.warn('[BRAPI] Falha ao buscar cotações em lote');
+        return [];
+    }
+
+    const json = await response.json();
+    const results = json.results || [];
+    
+    // Atualiza o cache com os dados frescos
+    const now = Date.now();
+    results.forEach((item: any) => {
+        if (item.symbol) {
+            tickerCache.set(item.symbol, { timestamp: now, data: item });
+        }
+    });
+    
+    return results;
+  } catch (error) {
+    console.error("[BRAPI] Erro de conexão em lote:", error);
     return [];
   }
 };
