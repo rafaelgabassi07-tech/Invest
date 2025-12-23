@@ -1,5 +1,5 @@
 
-const CACHE_VERSION = 'v2.5'; // Incrementado para disparar o update
+const CACHE_VERSION = 'v2.6'; // Incremento de versão
 const STATIC_CACHE = `invest-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `invest-runtime-${CACHE_VERSION}`;
 
@@ -12,25 +12,26 @@ const PRECACHE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  // O 'install' apenas baixa os arquivos para o cache.
+  // NÃO chamamos self.skipWaiting() aqui para evitar atualização forçada.
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       console.log('[SW] Pre-caching static assets');
       return cache.addAll(PRECACHE_ASSETS);
     })
-    // IMPORTANTE: Removemos o self.skipWaiting() automático aqui.
-    // O SW vai esperar no estado 'waiting' até o usuário clicar no botão.
   );
 });
 
-// Listener para receber o comando da UI
+// Listener crítico: Só atualiza quando a UI mandar
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[SW] Mensagem SKIP_WAITING recebida. Atualizando...');
+    console.log('[SW] Comando manual recebido: SKIP_WAITING. Ativando nova versão...');
     self.skipWaiting();
   }
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Ativando nova versão...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -38,14 +39,17 @@ self.addEventListener('activate', (event) => {
           .filter((name) => name !== STATIC_CACHE && name !== RUNTIME_CACHE)
           .map((name) => caches.delete(name))
       );
-    }).then(() => self.clients.claim())
+    }).then(() => {
+      // Assim que ativado, assume o controle das abas abertas imediatamente (mas só após o reload visual)
+      return self.clients.claim();
+    })
   );
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Network First para navegação (HTML)
+  // Network First para navegação (HTML) para garantir dados frescos no reload
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -69,7 +73,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate para o restante
+  // Stale-While-Revalidate para o restante (CSS, JS locais)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((networkRes) => {
@@ -78,7 +82,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, copy));
         }
         return networkRes;
-      }).catch(() => {}); // Falha silenciosa no fetch background
+      }).catch(() => {});
 
       return cached || fetchPromise;
     })

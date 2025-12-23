@@ -19,6 +19,7 @@ import { AddTransactionModal } from './components/AddTransactionModal.tsx';
 import { Asset, Transaction, AppTheme, AppNotification } from './types.ts';
 import { fetchTickersData } from './services/brapiService.ts';
 import { AVAILABLE_THEMES } from './services/themeService.ts';
+import { Download, RefreshCw } from 'lucide-react';
 
 const AssetDetailModal = lazy(() => import('./components/AssetDetailModal.tsx').then(m => ({ default: m.AssetDetailModal })));
 const DividendCalendarModal = lazy(() => import('./components/DividendCalendarModal.tsx').then(m => ({ default: m.DividendCalendarModal })));
@@ -28,6 +29,29 @@ const EvolutionModal = lazy(() => import('./components/EvolutionModal.tsx').then
 const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then(m => ({ default: m.PortfolioModal })));
 
 const INITIAL_ASSETS: Asset[] = [];
+
+// Componente de Banner de Atualização
+const UpdateBanner: React.FC<{ onUpdate: () => void }> = ({ onUpdate }) => (
+  <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md animate-slide-up">
+    <div className="bg-white/80 dark:bg-[#1c1c1e]/90 backdrop-blur-xl p-4 rounded-3xl border border-brand-500/30 shadow-2xl shadow-brand-500/20 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-brand-500 flex items-center justify-center text-white animate-pulse">
+          <Download size={20} />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-gray-900 dark:text-white">Atualização Disponível</h4>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Nova versão pronta para instalar.</p>
+        </div>
+      </div>
+      <button 
+        onClick={onUpdate}
+        className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-brand-500/20 flex items-center gap-2"
+      >
+        <RefreshCw size={14} /> Atualizar
+      </button>
+    </div>
+  </div>
+);
 
 const App: React.FC = () => {
   const [isAppLoading, setIsAppLoading] = useState(true);
@@ -39,7 +63,8 @@ const App: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   
-  // Notification State
+  // Update & Notification State
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   
@@ -78,24 +103,8 @@ const App: React.FC = () => {
   // SISTEMA DE ATUALIZAÇÃO: Escuta evento do Service Worker
   useEffect(() => {
     const handleUpdateAvailable = () => {
-        setNotifications(prev => {
-            if (prev.some(n => n.type === 'system')) return prev; 
-            
-            const newNotif: AppNotification = {
-                id: 999999, 
-                title: "Atualização Disponível",
-                message: "Uma nova versão do app está pronta. Toque para instalar.",
-                time: "Agora",
-                type: "system",
-                read: false,
-                group: "Hoje",
-                actionLabel: "Instalar Agora 🚀",
-                onAction: () => {
-                    if (window.updateApp) window.updateApp();
-                }
-            };
-            return [newNotif, ...prev];
-        });
+        console.log("Evento 'invest-update-available' capturado no React.");
+        setUpdateAvailable(true); // Ativa o banner flutuante
     };
 
     window.addEventListener('invest-update-available', handleUpdateAvailable);
@@ -306,7 +315,10 @@ const App: React.FC = () => {
           onNotificationsClick={() => setShowNotifications(true)}
           onRefreshClick={() => refreshMarketData(true)}
         />
-        {/* CORREÇÃO: pb-32 para mobile (espaço da bottom nav), pb-6 para desktop (sem nav inferior) */}
+        
+        {/* Update Banner */}
+        {updateAvailable && <UpdateBanner onUpdate={() => window.updateApp && window.updateApp()} />}
+
         <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 md:pb-6 overscroll-contain">
           <div className="w-full px-4 md:px-6 md:max-w-7xl md:mx-auto pt-4">
             
@@ -315,4 +327,76 @@ const App: React.FC = () => {
                     <NotificationsView 
                         notifications={notifications} 
                         onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))}
-                        onNotificationClick={(id) => setNotifications
+                        onNotificationClick={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
+                    />
+                </div>
+            ) : (
+                <>
+                    {activeTab === 'dashboard' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
+                            <div className="lg:col-span-2 h-full"><SummaryCard data={summaryData} /></div>
+                            <div className="h-full"><PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} /></div>
+                            <div className="h-64 md:h-auto"><DividendCalendarCard assets={assets} onClick={() => setModalOpen('calendar')} /></div>
+                            <div className="h-64 md:h-auto"><IncomeReportCard assets={assets} onClick={() => setModalOpen('income')} /></div>
+                            <div className="h-64 md:h-auto"><EvolutionCard onClick={() => setModalOpen('evolution')} /></div>
+                            <div className="h-64 md:h-auto"><InflationAnalysisCard onClick={() => setModalOpen('realpower')} /></div>
+                        </div>
+                    )}
+
+                    {activeTab === 'wallet' && (
+                        <WalletView assets={assets} onAssetClick={setSelectedAsset} onEvolutionClick={() => setModalOpen('evolution')} />
+                    )}
+
+                    {activeTab === 'transactions' && (
+                        <TransactionsView transactions={transactions} onEditTransaction={(t) => { setTransactionToEdit(t); setIsAddModalOpen(true); }} />
+                    )}
+
+                    {activeTab === 'settings' && (
+                        <SettingsView 
+                            currentTheme={currentTheme} 
+                            setCurrentTheme={setCurrentTheme} 
+                            availableThemes={AVAILABLE_THEMES}
+                            assets={assets}
+                            transactions={transactions}
+                            onImport={handleImportData}
+                        />
+                    )}
+                </>
+            )}
+
+          </div>
+        </main>
+        
+        {/* Modals */}
+        <Suspense fallback={null}>
+            {selectedAsset && (
+                <AssetDetailModal asset={selectedAsset} transactions={transactions} onClose={() => setSelectedAsset(null)} />
+            )}
+            {modalOpen === 'portfolio' && <PortfolioModal assets={assets} totalValue={summaryData.totalBalance} onClose={() => setModalOpen(null)} />}
+            {modalOpen === 'calendar' && <DividendCalendarModal assets={assets} onClose={() => setModalOpen(null)} />}
+            {modalOpen === 'income' && <IncomeReportModal assets={assets} onClose={() => setModalOpen(null)} />}
+            {modalOpen === 'realpower' && <RealPowerModal onClose={() => setModalOpen(null)} />}
+            {modalOpen === 'evolution' && <EvolutionModal totalValue={summaryData.totalBalance} transactions={transactions} onClose={() => setModalOpen(null)} />}
+        </Suspense>
+
+        {isAddModalOpen && (
+            <AddTransactionModal 
+                onClose={() => setIsAddModalOpen(false)} 
+                onSave={handleSaveTransaction} 
+                onDelete={handleDeleteTransaction}
+                initialTransaction={transactionToEdit}
+            />
+        )}
+
+        <AIAdvisor summary={summaryData} portfolio={portfolioData} assets={assets} />
+        
+        <div className="md:hidden">
+            <BottomNav activeTab={activeTab === 'settings' ? previousTab : activeTab} setActiveTab={setActiveTab} />
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default App;
