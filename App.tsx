@@ -79,10 +79,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleUpdateAvailable = () => {
         setNotifications(prev => {
-            if (prev.some(n => n.type === 'system')) return prev; // Evita duplicatas
+            if (prev.some(n => n.type === 'system')) return prev; 
             
             const newNotif: AppNotification = {
-                id: 999999, // ID alto para ficar no topo se ordenado
+                id: 999999, 
                 title: "Atualização Disponível",
                 message: "Uma nova versão do app está pronta. Toque para instalar.",
                 time: "Agora",
@@ -306,6 +306,7 @@ const App: React.FC = () => {
           onNotificationsClick={() => setShowNotifications(true)}
           onRefreshClick={() => refreshMarketData(true)}
         />
+        {/* CORREÇÃO: pb-32 para mobile (espaço da bottom nav), pb-6 para desktop (sem nav inferior) */}
         <main className="flex-1 overflow-y-auto custom-scrollbar animate-fade-in pb-32 md:pb-6 overscroll-contain">
           <div className="w-full px-4 md:px-6 md:max-w-7xl md:mx-auto pt-4">
             
@@ -314,50 +315,4 @@ const App: React.FC = () => {
                     <NotificationsView 
                         notifications={notifications} 
                         onMarkAllRead={() => setNotifications(prev => prev.map(n => ({...n, read: true})))}
-                        onNotificationClick={(id) => setNotifications(prev => prev.map(n => n.id === id ? {...n, read: true} : n))}
-                    />
-                </div>
-            ) : (
-                <>
-                {activeTab === 'dashboard' && (
-                <div className="space-y-4 pb-4">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
-                    <div className="md:col-span-8"><SummaryCard data={summaryData} /></div>
-                    <div className="md:col-span-4"><PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} /></div>
-                    <div className="md:col-span-6 lg:col-span-3"><EvolutionCard onClick={() => setModalOpen('evolution')} /></div>
-                    <div className="md:col-span-6 lg:col-span-3"><DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} /></div>
-                    <div className="md:col-span-6 lg:col-span-3"><IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} /></div>
-                    <div className="md:col-span-6 lg:col-span-3"><InflationAnalysisCard onClick={() => setModalOpen('realPower')} /></div>
-                    </div>
-                </div>
-                )}
-                {activeTab === 'wallet' && <div className="max-w-5xl mx-auto"><WalletView assets={assets} onAssetClick={setSelectedAsset} /></div>}
-                {activeTab === 'transactions' && <div className="max-w-5xl mx-auto"><TransactionsView transactions={transactions} onEditTransaction={(t) => { setTransactionToEdit(t); setIsAddModalOpen(true); }} /></div>}
-                {activeTab === 'settings' && (
-                <div className="max-w-4xl mx-auto">
-                    <SettingsView currentTheme={currentTheme} setCurrentTheme={setCurrentTheme} availableThemes={AVAILABLE_THEMES} assets={assets} transactions={transactions} onImport={handleImportData} />
-                </div>
-                )}
-                </>
-            )}
-            
-          </div>
-        </main>
-        {!showNotifications && <div className="md:hidden"><BottomNav activeTab={activeTab} setActiveTab={setActiveTab} /></div>}
-        <AIAdvisor summary={summaryData} portfolio={portfolioData} assets={assets} />
-        {isAddModalOpen && <AddTransactionModal onClose={() => setIsAddModalOpen(false)} onSave={handleSaveTransaction} onDelete={handleDeleteTransaction} initialTransaction={transactionToEdit} />}
-        <Suspense fallback={null}>
-            {selectedAsset && <AssetDetailModal asset={selectedAsset} transactions={transactions} onClose={() => setSelectedAsset(null)} />}
-            {modalOpen === 'realPower' && <RealPowerModal onClose={() => setModalOpen(null)} />}
-            {modalOpen === 'dividendCalendar' && <DividendCalendarModal assets={assets} onClose={() => setModalOpen(null)} />}
-            {modalOpen === 'incomeReport' && <IncomeReportModal assets={assets} onClose={() => setModalOpen(null)} />}
-            {/* CORREÇÃO CRÍTICA: Passando transactions para o EvolutionModal */}
-            {modalOpen === 'evolution' && <EvolutionModal onClose={() => setModalOpen(null)} totalValue={summaryData.totalBalance} />}
-            {modalOpen === 'portfolio' && <PortfolioModal assets={assets} totalValue={summaryData.totalBalance} onClose={() => setModalOpen(null)} />}
-        </Suspense>
-      </div>
-    </div>
-  );
-};
-
-export default App;
+                        onNotificationClick={(id) => setNotifications

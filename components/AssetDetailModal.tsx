@@ -37,17 +37,17 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
       <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
         
         {/* Header - Pro Style */}
-        <div className="px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
-             <div className="flex items-center gap-4">
+        <div className="px-4 md:px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
+             <div className="flex items-center gap-3 md:gap-4">
                  <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90">
                    <ChevronLeft size={24} />
                  </button>
                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-none flex items-center gap-2">
+                    <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white tracking-tight leading-none flex items-center gap-2">
                         {asset.ticker}
-                        <span className="text-[10px] bg-brand-500/10 text-brand-500 px-2 py-0.5 rounded-md uppercase font-bold tracking-wide">{asset.assetType}</span>
+                        <span className="text-[9px] md:text-[10px] bg-brand-500/10 text-brand-500 px-2 py-0.5 rounded-md uppercase font-bold tracking-wide">{asset.assetType}</span>
                     </h2>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{asset.companyName}</p>
+                    <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] md:max-w-none">{asset.companyName}</p>
                  </div>
              </div>
 
@@ -67,7 +67,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
                 })}
              </div>
 
-             <div className="flex items-center gap-3">
+             <div className="flex items-center gap-2 md:gap-3">
                  <button className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 border border-gray-200 dark:border-white/5">
                    <RefreshCw size={18} className={isLoadingHistory ? 'animate-spin' : ''} />
                  </button>
@@ -79,10 +79,10 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50 dark:bg-[#0d0d0d]">
-           <div className="max-w-7xl mx-auto px-6 py-8 w-full h-full">
+           <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full h-full">
               
               {/* Mobile Tabs */}
-              <div className="md:hidden flex overflow-x-auto custom-scrollbar gap-2 mb-6 pb-2">
+              <div className="md:hidden flex overflow-x-auto custom-scrollbar gap-2 mb-6 pb-2 -mx-4 px-4">
                  {(['overview', 'dividends', 'history', 'compare', 'about'] as TabType[]).map((tab) => {
                     const isActive = activeTab === tab;
                     const labels: Record<string, string> = { overview: 'Geral', dividends: 'Proventos', history: 'Histórico', compare: 'Comparar', about: 'Sobre' };
@@ -99,15 +99,15 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
               </div>
 
               {activeTab === 'overview' && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                     {/* Left Col: Price & Chart */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 shadow-xl">
+                        <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 md:p-8 border border-gray-200 dark:border-white/5 shadow-xl">
                             <div className="flex justify-between items-end mb-8">
                                 <div>
                                     <p className="text-gray-500 dark:text-white/40 text-xs font-bold uppercase tracking-widest mb-2">Cotação Atual</p>
-                                    <div className="flex items-center gap-4">
-                                        <h1 className="text-6xl font-bold text-gray-900 dark:text-white tracking-tighter">
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white tracking-tighter">
                                             R$ {asset.currentPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                         </h1>
                                         <div className={`px-3 py-1 rounded-xl font-bold text-sm border ${asset.dailyChange >= 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'}`}>
@@ -117,7 +117,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
                                 </div>
                             </div>
                             
-                            <div className="h-[400px] w-full">
+                            <div className="h-[300px] md:h-[400px] w-full">
                                 {isLoadingHistory ? (
                                 <div className="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-white/5 rounded-3xl animate-pulse">
                                     <TrendingUp className="text-gray-400 animate-bounce" size={48} />
@@ -142,7 +142,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
 
                     {/* Right Col: Indicators */}
                     <div className="space-y-6">
-                        <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 shadow-xl">
+                        <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 md:p-8 border border-gray-200 dark:border-white/5 shadow-xl">
                             <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-6">Indicadores Fundamentalistas</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-4 bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-2xl border border-gray-100 dark:border-white/5">
@@ -160,10 +160,10 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
                             </div>
                         </div>
 
-                        <div className="bg-brand-900 text-white rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden group">
+                        <div className="bg-brand-900 text-white rounded-[2.5rem] p-6 md:p-8 shadow-xl relative overflow-hidden group">
                              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-brand-500/30 transition-colors"></div>
                              <p className="text-brand-100 text-xs font-bold uppercase tracking-widest mb-2">Sua Posição</p>
-                             <h2 className="text-4xl font-bold mb-1">R$ {asset.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h2>
+                             <h2 className="text-3xl md:text-4xl font-bold mb-1">R$ {asset.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h2>
                              <p className="text-brand-200 text-sm font-medium">{asset.quantity} cotas</p>
                         </div>
                     </div>
@@ -171,7 +171,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
               )}
 
               {activeTab === 'history' && (
-                <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-8 border border-gray-200 dark:border-white/5 shadow-xl min-h-[500px]">
+                <div className="bg-white dark:bg-[#1c1c1e] rounded-[2.5rem] p-6 md:p-8 border border-gray-200 dark:border-white/5 shadow-xl min-h-[500px]">
                     <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-6 flex items-center gap-2">
                         <FileText size={20} className="text-brand-500" />
                         Histórico de Transações
