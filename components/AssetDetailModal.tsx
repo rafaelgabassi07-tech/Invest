@@ -40,12 +40,12 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
   const currentPos = ((asset.currentPrice - min52) / (max52 - min52)) * 100;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto">
-      <div className="hidden sm:block absolute inset-0 bg-black/70 transition-opacity animate-fade-in" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-auto">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose} />
 
-      <div className="bg-white dark:bg-brand-muted w-full h-full sm:h-[880px] sm:max-w-lg sm:rounded-[2.5rem] flex flex-col relative z-10 shadow-none sm:shadow-2xl animate-slide-up overflow-hidden sm:border border-white/10 transition-all duration-500">
+      <div className="bg-white dark:bg-brand-muted w-full h-full md:w-full md:max-w-lg md:h-[85vh] md:rounded-[2.5rem] flex flex-col relative z-10 shadow-2xl animate-slide-up overflow-hidden md:border border-gray-200 dark:border-white/10 transition-all duration-500">
         
-        <div className="flex w-full justify-center pt-3 pb-1 sm:hidden">
+        <div className="flex w-full justify-center pt-3 pb-1 md:hidden">
             <div className="w-12 h-1.5 rounded-full bg-gray-200 dark:bg-white/10"></div>
         </div>
 

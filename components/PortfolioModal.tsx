@@ -109,8 +109,10 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto bg-[#0d0d0d]">
-      <div className="w-full max-w-md h-full flex flex-col bg-gray-50 dark:bg-[#0d0d0d] relative animate-fade-in transition-colors">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-auto">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fade-in" onClick={onClose} />
+      
+      <div className="w-full h-full md:w-full md:max-w-md md:h-[85vh] flex flex-col bg-gray-50 dark:bg-[#0d0d0d] relative z-10 md:rounded-[2.5rem] shadow-2xl overflow-hidden animate-slide-up transition-colors md:border border-gray-200 dark:border-white/5">
         
         {/* Header */}
         <div className="px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
