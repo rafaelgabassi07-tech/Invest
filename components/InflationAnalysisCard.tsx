@@ -1,14 +1,15 @@
+
 import React from 'react';
 import { ShieldCheck, ChevronRight } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, Defs, LinearGradient, Stop } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface InflationAnalysisCardProps {
   onClick: () => void;
 }
 
-// Mock Data for Sparkline
+// Mock Data for Sparkline - Zerado
 const data = [
-  { value: 0.4 }, { value: 0.6 }, { value: 0.3 }, { value: 0.8 }, { value: 0.5 }, { value: 0.9 }
+  { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }
 ];
 
 export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ onClick }) => {
@@ -47,7 +48,7 @@ export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ on
          <div>
              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Ganho Real (12m)</p>
              <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
-                 +4.52%
+                 0.00%
                  <span className="text-[10px] bg-emerald-100/50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded-md self-center backdrop-blur-sm">
                     PRO
                  </span>
@@ -55,7 +56,7 @@ export const InflationAnalysisCard: React.FC<InflationAnalysisCardProps> = ({ on
          </div>
 
          {/* Sparkline Chart */}
-         <div className="h-10 w-24 relative mb-1">
+         <div className="h-10 w-24 relative mb-1 opacity-50">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                     <defs>

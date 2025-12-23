@@ -1,16 +1,16 @@
+
 import React from 'react';
 import { TrendingUp, ChevronRight, BarChart3 } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, Defs, LinearGradient, Stop } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface EvolutionCardProps {
   onClick: () => void;
 }
 
-// Mock Data for the Sparkline
+// Sparkline zerado ou plano para estado inicial
 const data = [
-  { value: 10000 }, { value: 10500 }, { value: 10200 }, { value: 11000 }, 
-  { value: 11800 }, { value: 12500 }, { value: 12200 }, { value: 13500 }, 
-  { value: 14200 }, { value: 15100 }, { value: 15800 }, { value: 16500 }
+  { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, 
+  { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }
 ];
 
 export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
@@ -47,17 +47,17 @@ export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
          <div>
             <div className="flex items-center gap-1.5 mb-1">
                 <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20 px-1.5 py-0.5 rounded-md text-[10px] font-bold backdrop-blur-sm flex items-center gap-1">
-                    <TrendingUp size={10} /> +65.2%
+                    <TrendingUp size={10} /> 0.00%
                 </span>
                 <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Acumulado</span>
             </div>
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                + R$ 6.500,00
+                R$ 0,00
             </h2>
          </div>
 
          {/* Sparkline Chart */}
-         <div className="h-10 w-24 relative mb-1">
+         <div className="h-10 w-24 relative mb-1 opacity-50">
             <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                     <defs>

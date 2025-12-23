@@ -24,10 +24,8 @@ const RealPowerModal = lazy(() => import('./components/RealPowerModal.tsx').then
 const EvolutionModal = lazy(() => import('./components/EvolutionModal.tsx').then(m => ({ default: m.EvolutionModal })));
 const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then(m => ({ default: m.PortfolioModal })));
 
-const INITIAL_ASSETS: Asset[] = [
-  { id: '1', ticker: 'SNAG11', shortName: 'SNAG', companyName: 'Suno Asset', assetType: 'FIAGRO', segment: 'Crédito Agrícola', allocationType: 'CRAs', quantity: 25, currentPrice: 10.86, totalValue: 271.50, dailyChange: 0, averagePrice: 9.69, totalCost: 242.37, lastDividend: 0.13, lastDividendDate: '23/12/2025', dy12m: 12.73, color: '#ea580c', pvp: 1.05, vp: 10.34, liquidity: '4.5M', netWorth: '627.8M', vacancy: 0.0, cnpj: '30.345.123/0001-99', administrator: 'Suno Asset', assetsCount: 34 },
-  { id: '2', ticker: 'BTCI11', shortName: 'BTCI', companyName: 'BTG Pactual', assetType: 'FII', segment: 'Papel', allocationType: 'CRIs', quantity: 25, currentPrice: 9.25, totalValue: 231.25, dailyChange: 0, averagePrice: 9.29, totalCost: 232.35, lastDividend: 0.10, lastDividendDate: '12/12/2025', dy12m: 12.50, color: '#f59e0b', pvp: 0.98, vp: 9.45, liquidity: '1.2M', netWorth: '1.1B', vacancy: 0.0, cnpj: '12.456.789/0001-22', administrator: 'BTG Pactual', assetsCount: 45 }
-];
+// Dados iniciais zerados para produção
+const INITIAL_ASSETS: Asset[] = [];
 
 const App: React.FC = () => {
   const [isAppLoading, setIsAppLoading] = useState(true);
