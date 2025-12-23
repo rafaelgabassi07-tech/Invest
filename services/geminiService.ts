@@ -13,33 +13,46 @@ export const getFinancialAdvice = async (
     // REGISTRA CHAMADA REAL
     logApiRequest('gemini');
     
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    // Fallback de segurança para garantir que a chave exista
+    const apiKey = process.env.API_KEY;
+    if (!apiKey || apiKey.includes('AIzaSy...')) {
+        console.warn("[Gemini] API Key inválida ou placeholder detectado.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey: apiKey });
     
-    const assetsContext = assets.map(a => 
-      `${a.ticker}: Preço R$${a.currentPrice}, Variação Hoje: ${a.dailyChange.toFixed(2)}%, DY: ${a.dy12m}%, P/VP: ${a.pvp}`
-    ).join(' | ');
+    // Criação de um contexto rico para a IA
+    const assetsContext = assets.map(a => {
+      const profit = a.totalValue - a.totalCost;
+      const profitPerc = a.totalCost > 0 ? (profit / a.totalCost) * 100 : 0;
+      return `- ${a.ticker} (${a.assetType}): ${a.quantity} cotas. PM: R$${a.averagePrice.toFixed(2)} | Atual: R$${a.currentPrice.toFixed(2)}. Rentab: ${profitPerc.toFixed(1)}%. Setor: ${a.segment}. DY: ${a.dy12m}%. P/VP: ${a.pvp}`;
+    }).join('\n');
+
+    const portfolioContext = portfolio.map(p => `${p.name}: ${p.percentage}%`).join(', ');
 
     const systemInstruction = `
-      Você é um consultor financeiro sênior especializado no mercado brasileiro (B3).
-      Sua missão é educar e orientar estrategicamente, sem prometer ganhos fáceis.
+      Você é o "Invest AI", um consultor financeiro sênior pessoal e extremamente inteligente, especializado no mercado brasileiro (B3).
       
-      Contexto Geral do Usuário:
-      - Patrimônio: R$ ${summary.totalBalance.toLocaleString('pt-BR')}
-      - Investido: R$ ${summary.totalInvested.toLocaleString('pt-BR')}
-      - DY Médio: ${summary.yieldOnCost.toFixed(2)}%
-      - Composição por Classe: ${portfolio.map(p => `${p.name} (${p.percentage}%)`).join(', ')}
+      DADOS DO USUÁRIO AGORA (${new Date().toLocaleDateString('pt-BR')}):
+      - Patrimônio Total: R$ ${summary.totalBalance.toLocaleString('pt-BR')}
+      - Total Investido: R$ ${summary.totalInvested.toLocaleString('pt-BR')}
+      - Lucro/Prejuízo: R$ ${summary.capitalGain.toLocaleString('pt-BR')}
+      - Renda Mensal Projetada: R$ ${(summary.projectedAnnualIncome / 12).toLocaleString('pt-BR')}
+      - Alocação Atual: ${portfolioContext}
       
-      Detalhes dos Ativos na Carteira:
+      DETALHE DOS ATIVOS:
       ${assetsContext}
 
-      Regras de Resposta:
-      1. Se o usuário perguntar sobre a queda de hoje, verifique os ativos com maior variação negativa no contexto.
-      2. Seja conciso e use formatação Markdown (negrito para tickers e valores).
-      3. Se o P/VP estiver muito acima de 1.1, mencione cautela com o preço.
+      SUAS DIRETRIZES:
+      1. **Seja Direto:** Responda a pergunta do usuário de forma objetiva.
+      2. **Análise de Carteira:** Se perguntado sobre a carteira, critique a diversificação e a exposição ao risco baseada nos setores dos ativos listados.
+      3. **Sem Alucinações:** Use APENAS os dados fornecidos acima. Se o usuário perguntar o preço de um ativo que não está na lista, diga que não tem acesso a cotações em tempo real fora da carteira dele.
+      4. **Estilo:** Profissional, mas acessível. Use Markdown (negrito) para destacar valores e tickers.
+      5. **Contexto de Queda:** Se o usuário perguntar "por que caiu?", analise os ativos com variação negativa no contexto fornecido.
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview', // Modelo rápido e eficiente para chat
       contents: query,
       config: {
         systemInstruction,
@@ -48,9 +61,9 @@ export const getFinancialAdvice = async (
       }
     });
 
-    return response.text || "Desculpe, não consegui processar sua análise agora.";
+    return response.text || "Não consegui gerar uma análise no momento. Tente novamente.";
   } catch (error) {
     console.error("[Gemini Advisor] Erro de conexão:", error);
-    return "Ocorreu um erro ao conectar com o serviço de IA. Verifique sua conexão ou se a API_KEY é válida.";
+    return "Ocorreu um erro ao conectar com a Inteligência Artificial. Verifique se sua CHAVE API está configurada corretamente no código.";
   }
 };

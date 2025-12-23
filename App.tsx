@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, Suspense, lazy, useCallback, useRef } from 'react';
 import { Header } from './components/Header.tsx';
 import { SummaryCard } from './components/SummaryCard.tsx';
@@ -52,10 +51,10 @@ const App: React.FC = () => {
     } catch (e) { return INITIAL_ASSETS; }
   });
 
-  const assetsRef = useRef(assets);
+  const assetsRef = useRef<Asset[]>(assets);
   const isRefreshingRef = useRef(false);
-  const lastRefreshTimeRef = useRef(0);
 
+  // Mantém ref atualizada para uso dentro do refreshMarketData
   useEffect(() => { assetsRef.current = assets; }, [assets]);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -79,10 +78,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleUpdateAvailable = () => {
         setNotifications(prev => {
-            if (prev.some(n => n.type === 'system')) return prev; // Evita duplicatas
+            if (prev.some(n => n.type === 'system')) return prev; 
             
             const newNotif: AppNotification = {
-                id: 999999, // ID alto para ficar no topo se ordenado
+                id: 999999, 
                 title: "Atualização Disponível",
                 message: "Uma nova versão do app está pronta. Toque para instalar.",
                 time: "Agora",
@@ -111,51 +110,57 @@ const App: React.FC = () => {
   const handleSplashComplete = useCallback(() => setIsAppLoading(false), []);
 
   const refreshMarketData = useCallback(async (force = false) => {
-    const now = Date.now();
-    if (!force && now - lastRefreshTimeRef.current < 30000) return;
-    if (isRefreshingRef.current) return;
-    
     const currentAssets = assetsRef.current;
     if (currentAssets.length === 0) {
-      setIsAppLoading(false);
+      setIsRefreshing(false);
       return;
     }
+    
+    if (isRefreshingRef.current && !force) return;
     
     isRefreshingRef.current = true;
     setIsRefreshing(true);
 
     try {
-        const tickers = currentAssets.map(a => a.ticker);
+        const tickers: string[] = [...new Set(currentAssets.map(a => a.ticker))]; // Unique tickers
+        console.log(`[App] Atualizando ${tickers.length} ativos...`);
+        
         const liveData = await fetchTickersData(tickers);
         
         if (liveData && liveData.length > 0) {
-          lastRefreshTimeRef.current = Date.now();
           setAssets(prev => prev.map(asset => {
               const live = liveData.find((l: any) => l.symbol === asset.ticker);
               if (!live) return asset;
 
               let lastDiv = asset.lastDividend;
               let lastDivDate = asset.lastDividendDate;
+              
+              // Atualiza dividendos se disponíveis na API
               if (live.dividendsData?.cashDividends?.length > 0) {
                   const sortedDivs = [...live.dividendsData.cashDividends].sort((a: any, b: any) => 
                       new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
                   );
-                  lastDiv = sortedDivs[0].rate;
-                  lastDivDate = new Date(sortedDivs[0].paymentDate).toLocaleDateString('pt-BR');
+                  // Pega o mais recente pagável ou pago
+                  const latest = sortedDivs[0];
+                  if (latest) {
+                    lastDiv = latest.rate;
+                    lastDivDate = new Date(latest.paymentDate).toLocaleDateString('pt-BR');
+                  }
               }
 
               return {
                 ...asset,
-                currentPrice: live.regularMarketPrice,
-                totalValue: live.regularMarketPrice * asset.quantity,
+                currentPrice: live.regularMarketPrice || asset.currentPrice,
+                totalValue: (live.regularMarketPrice || asset.currentPrice) * asset.quantity,
                 dailyChange: live.regularMarketChangePercent || 0,
                 companyName: live.longName || asset.companyName,
                 pvp: live.priceToBook || asset.pvp || 1,
                 pl: live.priceEarnings || asset.pl || 0,
                 lastDividend: lastDiv,
                 lastDividendDate: lastDivDate,
-                dy12m: live.yield || asset.dy12m || 0,
-                liquidity: live.regularMarketVolume?.toLocaleString('pt-BR') || asset.liquidity
+                dy12m: live.dividendYield || asset.dy12m || 0, // BRAPI usa dividendYield
+                liquidity: live.regularMarketVolume ? live.regularMarketVolume.toLocaleString('pt-BR') : asset.liquidity,
+                sector: live.sector || asset.segment // Tenta atualizar setor
               };
           }));
         }
@@ -170,11 +175,13 @@ const App: React.FC = () => {
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
     if (newData.assets) setAssets(newData.assets);
     if (newData.transactions) setTransactions(newData.transactions);
+    // Força atualização após importação
     setTimeout(() => refreshMarketData(true), 500);
   }, [refreshMarketData]);
 
   const recalculateAssetFromHistory = (ticker: string, allTransactions: Transaction[], currentAssets: Asset[]) => {
     const assetTransactions = allTransactions.filter(t => t.ticker === ticker);
+    // Ordenar transações por data
     assetTransactions.sort((a, b) => {
         const parseDate = (d: string) => {
             const months: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
@@ -187,20 +194,28 @@ const App: React.FC = () => {
 
     let quantity = 0;
     let totalCost = 0;
+    
     for (const t of assetTransactions) {
-        if (t.type === 'Compra') { quantity += t.quantity; totalCost += t.total; } 
-        else if (t.type === 'Venda') {
+        if (t.type === 'Compra') { 
+            quantity += t.quantity; 
+            totalCost += t.total; 
+        } else if (t.type === 'Venda') {
             const currentAvgPrice = quantity > 0 ? totalCost / quantity : 0;
             const qtySold = Math.min(quantity, t.quantity);
             quantity -= qtySold;
+            // Reduz custo proporcionalmente
             totalCost -= (qtySold * currentAvgPrice);
         }
     }
+
     const existingAsset = currentAssets.find(a => a.ticker === ticker);
-    const lastTransPrice = assetTransactions.length > 0 ? assetTransactions[assetTransactions.length - 1].price : 0;
+    // Se vendeu tudo, remove
     if (quantity <= 0.0001) return currentAssets.filter(a => a.ticker !== ticker);
+    
     const avgPrice = quantity > 0 ? totalCost / quantity : 0;
-    const currentPrice = existingAsset ? existingAsset.currentPrice : lastTransPrice;
+    // Usa preço atual se existir, senão usa o da última transação como placeholder
+    const currentPrice = existingAsset ? existingAsset.currentPrice : (assetTransactions.length > 0 ? assetTransactions[assetTransactions.length - 1].price : 0);
+    
     const updatedAsset: Asset = {
         ...(existingAsset || {
             id: ticker, ticker: ticker, shortName: ticker.substring(0, 4), companyName: ticker,
@@ -208,8 +223,13 @@ const App: React.FC = () => {
             dailyChange: 0, lastDividend: 0, lastDividendDate: '', dy12m: 0, color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
             pvp: 1, vp: 0, liquidity: 'N/A', netWorth: 'N/A', segment: 'Outros', allocationType: 'Outros'
         }),
-        quantity: Number(quantity.toFixed(8)), totalCost, averagePrice: avgPrice, currentPrice, totalValue: quantity * currentPrice
+        quantity: Number(quantity.toFixed(8)), 
+        totalCost, 
+        averagePrice: avgPrice, 
+        currentPrice, 
+        totalValue: quantity * currentPrice
     };
+
     return existingAsset ? currentAssets.map(a => a.ticker === ticker ? updatedAsset : a) : [updatedAsset, ...currentAssets];
   };
 
@@ -220,19 +240,27 @@ const App: React.FC = () => {
         return updated;
     });
     setAssets(prev => recalculateAssetFromHistory(newTransaction.ticker, updated, prev));
-    setTimeout(() => refreshMarketData(true), 500);
+    // Força atualização de preços após salvar
+    setTimeout(() => refreshMarketData(true), 1000);
   }, [refreshMarketData]);
 
   const handleDeleteTransaction = useCallback((id: string) => {
     const t = transactions.find(x => x.id === id);
     if (!t) return;
-    const updated = transactions.filter(x => x.id !== id);
-    setTransactions(updated);
-    setAssets(prev => recalculateAssetFromHistory(t.ticker, updated, prev));
+    
+    // Precisamos filtrar primeiro para recalcular corretamente
+    const remainingTransactions = transactions.filter(x => x.id !== id);
+    setTransactions(remainingTransactions);
+    
+    setAssets(prev => recalculateAssetFromHistory(t.ticker, remainingTransactions, prev));
   }, [transactions]);
 
+  // Efeito inicial para carregar dados assim que o app não estiver mais carregando (Splash)
   useEffect(() => {
-    if (!isAppLoading) { refreshMarketData(); }
+    if (!isAppLoading) { 
+        // Pequeno delay para garantir que a UI renderizou antes do fetch pesado
+        setTimeout(() => refreshMarketData(true), 500); 
+    }
   }, [isAppLoading, refreshMarketData]);
 
   useEffect(() => {
@@ -351,8 +379,7 @@ const App: React.FC = () => {
             {modalOpen === 'realPower' && <RealPowerModal onClose={() => setModalOpen(null)} />}
             {modalOpen === 'dividendCalendar' && <DividendCalendarModal assets={assets} onClose={() => setModalOpen(null)} />}
             {modalOpen === 'incomeReport' && <IncomeReportModal assets={assets} onClose={() => setModalOpen(null)} />}
-            {/* CORREÇÃO CRÍTICA: Passando transactions para o EvolutionModal */}
-            {modalOpen === 'evolution' && <EvolutionModal onClose={() => setModalOpen(null)} totalValue={summaryData.totalBalance} />}
+            {modalOpen === 'evolution' && <EvolutionModal onClose={() => setModalOpen(null)} totalValue={summaryData.totalBalance} transactions={transactions} />}
             {modalOpen === 'portfolio' && <PortfolioModal assets={assets} totalValue={summaryData.totalBalance} onClose={() => setModalOpen(null)} />}
         </Suspense>
       </div>

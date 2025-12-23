@@ -6,7 +6,8 @@
 import { logApiRequest } from './telemetryService.ts';
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos de cache
+// Reduzido cache em memória para forçar atualização mais frequente na UI
+const CACHE_DURATION = 2 * 60 * 1000; 
 
 // Cache Granular
 const tickerCache = new Map<string, { timestamp: number; data: any }>();
@@ -41,12 +42,22 @@ const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
 
   const fetchPromise = (async () => {
     try {
-      // REGISTRA CHAMADA REAL
       logApiRequest('brapi');
       
-      const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}`);
+      // Adiciona timestamp para bustar cache de CDN/Vercel Edge
+      const ts = new Date().getTime();
+      const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}&ts=${ts}`, {
+        method: 'GET',
+        cache: 'no-store', // CRÍTICO: Evita que o navegador/Vercel cacheie a resposta da API
+        headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        }
+      });
 
       if (response.status === 429) {
+        console.warn(`[BRAPI] Rate limit atingido para ${ticker}`);
         return cached ? cached.data : null;
       }
 
@@ -73,6 +84,7 @@ const fetchSingleTicker = async (ticker: string): Promise<any | null> => {
 
 export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length || !BRAPI_TOKEN) return [];
+  // Fazemos chamadas individuais em paralelo para maximizar sucesso parcial
   const promises = tickers.map(ticker => fetchSingleTicker(ticker));
   const results = await Promise.all(promises);
   return results.filter(item => item !== null);
@@ -88,7 +100,11 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
 
   try {
     logApiRequest('brapi');
-    const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}`);
+    const ts = new Date().getTime();
+    const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}&ts=${ts}`, {
+        cache: 'no-store'
+    });
+    
     if (!response.ok) return [];
     const data = await response.json();
     if (data.results?.[0]?.historicalDataPrice) {
