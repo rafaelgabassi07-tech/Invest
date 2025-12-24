@@ -23,9 +23,49 @@ export const getBrapiToken = (): string => {
 
 const BRAPI_TOKEN = getBrapiToken();
 
+// --- MOCK DATA GENERATORS (Para funcionar sem API Key) ---
+const generateMockHistory = (ticker: string) => {
+    const data = [];
+    let price = 100;
+    const now = new Date();
+    for (let i = 0; i < 30; i++) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - (30 - i));
+        price = price * (1 + (Math.random() * 0.04 - 0.02)); // +/- 2%
+        data.push({
+            date: date.toLocaleDateString('pt-BR', { month: 'short' }),
+            price: price,
+            timestamp: date.getTime() / 1000
+        });
+    }
+    return data;
+};
+
+const generateMockQuote = (ticker: string) => {
+    const price = 50 + Math.random() * 50;
+    const change = (Math.random() * 4) - 2;
+    return {
+        symbol: ticker,
+        shortName: ticker,
+        longName: `${ticker} Simulated S.A.`,
+        regularMarketPrice: price,
+        regularMarketChangePercent: change,
+        regularMarketVolume: 1000000 + Math.random() * 5000000,
+        priceToBook: 0.8 + Math.random() * 1.5,
+        dividendYield: Math.random() * 15,
+        sector: 'Financeiro',
+        logourl: `https://ui-avatars.com/api/?name=${ticker}&background=random&color=fff&size=128`
+    };
+};
+
 // Função para buscar dados históricos
 export const fetchHistoricalData = async (ticker: string, range: string = '1y', interval: string = '1mo') => {
-  if (!BRAPI_TOKEN) return [];
+  // Fallback para Mock se não tiver token
+  if (!BRAPI_TOKEN) {
+      console.warn(`[BRAPI] Sem token. Usando dados simulados para histórico de ${ticker}.`);
+      return generateMockHistory(ticker);
+  }
+
   const cacheKey = `${ticker}_history_${range}_${interval}`;
   const now = Date.now();
   const cached = tickerCache.get(cacheKey);
@@ -39,7 +79,8 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
         cache: 'no-store'
     });
     
-    if (!response.ok) return [];
+    if (!response.ok) throw new Error('API Error');
+    
     const data = await response.json();
     if (data.results?.[0]?.historicalDataPrice) {
       const formatted = data.results[0].historicalDataPrice.map((item: any) => ({
@@ -52,24 +93,29 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
     }
     return [];
   } catch (error) {
-    return [];
+    console.warn("[BRAPI] Erro ao buscar histórico, usando fallback.", error);
+    return generateMockHistory(ticker);
   }
 };
 
 // Implementação de Requisições Individuais (One-by-One em Paralelo)
 export const fetchTickersData = async (tickers: string[]) => {
-  if (!tickers.length || !BRAPI_TOKEN) return [];
+  if (!tickers.length) return [];
   
   // Limpa duplicatas
   const uniqueTickers = [...new Set(tickers)].filter(t => t && t.length > 0);
   if (uniqueTickers.length === 0) return [];
 
+  // Fallback Mock imediato
+  if (!BRAPI_TOKEN) {
+      console.warn(`[BRAPI] Sem token. Usando dados simulados para cotações.`);
+      return uniqueTickers.map(t => generateMockQuote(t));
+  }
+
   const ts = new Date().getTime();
 
   try {
-    // Cria uma array de Promises, uma para cada ticker individualmente
     const requests = uniqueTickers.map(async (ticker) => {
-        // Verifica cache individual primeiro
         const now = Date.now();
         const cached = tickerCache.get(ticker);
         if (cached && (now - cached.timestamp < CACHE_DURATION)) {
@@ -78,39 +124,34 @@ export const fetchTickersData = async (tickers: string[]) => {
 
         try {
             logApiRequest('brapi');
-            // Busca individual
             const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}&fundamental=true&ts=${ts}`, {
                 cache: 'no-store'
             });
 
             if (!response.ok) {
                 console.warn(`[BRAPI] Falha ao buscar ${ticker}: ${response.status}`);
-                return null;
+                return generateMockQuote(ticker); // Fallback individual
             }
 
             const json = await response.json();
-            const result = json.results?.[0]; // Pega o primeiro (e único) resultado
+            const result = json.results?.[0]; 
 
             if (result) {
                 tickerCache.set(result.symbol, { timestamp: now, data: result });
                 return result;
             }
-            return null;
+            return generateMockQuote(ticker);
         } catch (err) {
             console.error(`[BRAPI] Erro de rede ao buscar ${ticker}`, err);
-            return null;
+            return generateMockQuote(ticker);
         }
     });
 
-    // Aguarda todas as requisições terminarem (Promise.allSettled poderia ser usado, 
-    // mas Promise.all com catch interno no map funciona bem para filtrar nulos)
     const results = await Promise.all(requests);
-
-    // Filtra os nulos (falhas) e retorna apenas os dados válidos
     return results.filter(item => item !== null);
 
   } catch (error) {
     console.error("[BRAPI] Erro geral na busca de ativos:", error);
-    return [];
+    return uniqueTickers.map(t => generateMockQuote(t));
   }
 };

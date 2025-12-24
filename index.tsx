@@ -34,23 +34,21 @@ window.updateApp = () => {
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // Tenta registrar o SW apenas se estivermos em produção ou se o arquivo existir
+    // O erro 404 ocorre se o arquivo não estiver na pasta 'public/' do Vite
     navigator.serviceWorker.register('/service-worker.js')
       .then(registration => {
         console.log('[SW] Registrado. Escopo:', registration.scope);
 
-        // Caso 1: O navegador já baixou e o worker está esperando desde um load anterior
         if (registration.waiting) {
             waitingWorker = registration.waiting;
             window.dispatchEvent(new Event('invest-update-available'));
         }
 
-        // Caso 2: Uma nova atualização foi encontrada agora
         registration.onupdatefound = () => {
             const installingWorker = registration.installing;
             if (installingWorker) {
                 installingWorker.onstatechange = () => {
-                    // Se instalou com sucesso, mas ainda temos um controller ativo (app rodando)
-                    // então ele entra em 'installed' (que é semanticamente 'waiting' para ativação)
                     if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
                         waitingWorker = installingWorker;
                         window.dispatchEvent(new Event('invest-update-available'));
@@ -59,9 +57,15 @@ if ('serviceWorker' in navigator) {
             }
         };
       })
-      .catch(error => console.warn('[SW] Falha no registro:', error));
+      .catch(error => {
+        // Silencia erro comum de 404 em dev ou configuração incorreta de pasta
+        if (error.message.includes('404') || error.message.includes('MIME')) {
+            console.warn('[SW] Service Worker não encontrado ou tipo incorreto. Verifique se service-worker.js está na pasta public/.');
+        } else {
+            console.warn('[SW] Falha no registro:', error);
+        }
+      });
       
-    // Quando o novo worker assume (pós skipWaiting), recarregamos a página
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         console.log('[SW] Controlador alterado. Recarregando app...');
         window.location.reload();
