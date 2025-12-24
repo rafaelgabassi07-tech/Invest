@@ -18,7 +18,7 @@ export const getBrapiToken = (): string => {
     // @ts-ignore
     return import.meta.env.VITE_BRAPI_TOKEN;
   }
-  return 'qQubkDBNuT4NmqDc8MP7Hx';
+  return '';
 };
 
 const BRAPI_TOKEN = getBrapiToken();
