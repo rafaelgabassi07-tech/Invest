@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  X, TrendingUp, RefreshCw, ChevronLeft, ArrowUpRight, ArrowDownRight, FileText
+  X, TrendingUp, RefreshCw, ChevronLeft, ArrowUpRight, ArrowDownRight, FileText, Sparkles, Bot
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 import { Asset, Transaction } from '../types';
 import { fetchHistoricalData } from '../services/brapiService';
+import { analyzeAsset } from '../services/geminiService';
 
 interface AssetDetailModalProps {
   asset: Asset;
@@ -13,12 +14,14 @@ interface AssetDetailModalProps {
   onClose: () => void;
 }
 
-type TabType = 'overview' | 'dividends' | 'history' | 'compare' | 'about' | 'docs';
+type TabType = 'overview' | 'ai_analysis' | 'dividends' | 'history' | 'compare' | 'about';
 
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, transactions = [], onClose }) => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [realHistory, setRealHistory] = useState<any[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -30,13 +33,26 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
     loadHistory();
   }, [asset.ticker]);
 
+  // Carrega análise IA quando entra na aba
+  useEffect(() => {
+    if (activeTab === 'ai_analysis' && !aiAnalysis && !isAiLoading) {
+        const loadAnalysis = async () => {
+            setIsAiLoading(true);
+            const text = await analyzeAsset(asset);
+            setAiAnalysis(text);
+            setIsAiLoading(false);
+        };
+        loadAnalysis();
+    }
+  }, [activeTab, asset, aiAnalysis, isAiLoading]);
+
   const assetTransactions = transactions.filter(t => t.ticker === asset.ticker);
 
   return (
     <div className="fixed inset-0 left-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
       <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
         
-        {/* Header - Pro Style */}
+        {/* Header */}
         <div className="px-4 md:px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-[#0d0d0d]/85 backdrop-blur-xl border-b border-gray-200 dark:border-white/5 sticky top-0 z-20">
              <div className="flex items-center gap-3 md:gap-4">
                  <button onClick={onClose} className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all active:scale-90">
@@ -52,9 +68,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
              </div>
 
              <div className="hidden md:flex items-center gap-2 bg-gray-100 dark:bg-[#1c1c1e] p-1 rounded-xl">
-                {(['overview', 'dividends', 'history', 'compare', 'about'] as TabType[]).map((tab) => {
+                {(['overview', 'ai_analysis', 'history'] as TabType[]).map((tab) => {
                     const isActive = activeTab === tab;
-                    const labels: Record<string, string> = { overview: 'Visão Geral', dividends: 'Proventos', history: 'Histórico', compare: 'Comparar', about: 'Sobre' };
+                    const labels: Record<string, any> = { 
+                        overview: 'Geral', 
+                        ai_analysis: <div className="flex items-center gap-1"><Sparkles size={12} /> IA Insight</div>, 
+                        history: 'Histórico' 
+                    };
                     return (
                         <button 
                             key={tab} 
@@ -83,9 +103,9 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
               
               {/* Mobile Tabs */}
               <div className="md:hidden flex overflow-x-auto custom-scrollbar gap-2 mb-6 pb-2 -mx-4 px-4 sticky top-0 bg-gray-50/95 dark:bg-[#0d0d0d]/95 z-10 pt-2 backdrop-blur-sm">
-                 {(['overview', 'dividends', 'history', 'compare', 'about'] as TabType[]).map((tab) => {
+                 {(['overview', 'ai_analysis', 'history'] as TabType[]).map((tab) => {
                     const isActive = activeTab === tab;
-                    const labels: Record<string, string> = { overview: 'Geral', dividends: 'Proventos', history: 'Histórico', compare: 'Comparar', about: 'Sobre' };
+                    const labels: Record<string, string> = { overview: 'Geral', ai_analysis: '✨ IA Insight', history: 'Histórico' };
                     return (
                         <button 
                             key={tab} 
@@ -168,6 +188,46 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({ asset, trans
                         </div>
                     </div>
                 </div>
+              )}
+
+              {activeTab === 'ai_analysis' && (
+                 <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 border border-gray-200 dark:border-white/5 shadow-xl min-h-[400px] flex flex-col items-center justify-center text-center">
+                    {isAiLoading ? (
+                        <div className="flex flex-col items-center">
+                            <Sparkles className="w-12 h-12 text-brand-500 animate-spin-slow mb-4" />
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">O Gemini está analisando...</h3>
+                            <p className="text-sm text-gray-500 mt-2">Processando fundamentos e cotação de {asset.ticker}</p>
+                        </div>
+                    ) : aiAnalysis ? (
+                        <div className="w-full text-left">
+                            <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100 dark:border-white/5">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                                    <Bot size={24} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">Análise do Gemini AI</h3>
+                                    <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Powered by Google</p>
+                                </div>
+                            </div>
+                            <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <p className="text-gray-700 dark:text-gray-300 text-base leading-relaxed whitespace-pre-wrap font-medium">
+                                    {aiAnalysis}
+                                </p>
+                            </div>
+                            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-white/5 flex justify-end">
+                                <button onClick={() => { setAiAnalysis(null); setIsAiLoading(false); setTimeout(() => setActiveTab('overview'), 100); setTimeout(() => setActiveTab('ai_analysis'), 200); }} className="text-xs font-bold text-brand-500 hover:text-brand-400 flex items-center gap-1">
+                                    <RefreshCw size={12} /> Gerar nova análise
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                         <div className="flex flex-col items-center">
+                            <Sparkles className="w-12 h-12 text-gray-300 mb-4" />
+                            <p className="text-gray-500">Não foi possível gerar a análise.</p>
+                            <button onClick={() => setActiveTab('overview')} className="mt-4 text-brand-500 font-bold">Voltar</button>
+                        </div>
+                    )}
+                 </div>
               )}
 
               {activeTab === 'history' && (

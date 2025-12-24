@@ -3,6 +3,12 @@ import { GoogleGenAI } from "@google/genai";
 import { FinancialSummary, PortfolioItem, Asset } from "../types";
 import { logApiRequest } from './telemetryService.ts';
 
+const getApiKey = () => {
+  const key = process.env.API_KEY;
+  if (!key || key === 'undefined' || key.trim() === '') return null;
+  return key;
+};
+
 export const getFinancialAdvice = async (
   query: string, 
   summary: FinancialSummary, 
@@ -10,20 +16,14 @@ export const getFinancialAdvice = async (
   assets: Asset[] = []
 ): Promise<string> => {
   try {
-    // REGISTRA CHAMADA REAL
-    logApiRequest('gemini');
-    
-    // Obtém chave EXCLUSIVAMENTE das variáveis de ambiente
-    const apiKey = process.env.API_KEY;
-    
+    const apiKey = getApiKey();
     if (!apiKey) {
-        console.warn("[Gemini] API Key não encontrada nas variáveis de ambiente.");
-        return "⚠️ A chave de API do Gemini não foi detectada. Configure a variável de ambiente 'API_KEY' para ativar o assistente.";
+        return "⚠️ A chave de API do Gemini não foi detectada. Verifique suas variáveis de ambiente (API_KEY).";
     }
 
+    logApiRequest('gemini');
     const ai = new GoogleGenAI({ apiKey: apiKey });
     
-    // Criação de um contexto rico para a IA
     const assetsContext = assets.map(a => {
       const profit = a.totalValue - a.totalCost;
       const profitPerc = a.totalCost > 0 ? (profit / a.totalCost) * 100 : 0;
@@ -39,34 +39,97 @@ export const getFinancialAdvice = async (
       - Patrimônio Total: R$ ${summary.totalBalance.toLocaleString('pt-BR')}
       - Total Investido: R$ ${summary.totalInvested.toLocaleString('pt-BR')}
       - Lucro/Prejuízo: R$ ${summary.capitalGain.toLocaleString('pt-BR')}
-      - Renda Mensal Projetada: R$ ${(summary.projectedAnnualIncome / 12).toLocaleString('pt-BR')}
       - Alocação Atual: ${portfolioContext}
       
       DETALHE DOS ATIVOS:
       ${assetsContext}
 
-      SUAS DIRETRIZES:
-      1. **Seja Direto:** Responda a pergunta do usuário de forma objetiva.
-      2. **Análise de Carteira:** Se perguntado sobre a carteira, critique a diversificação e a exposição ao risco baseada nos setores dos ativos listados.
-      3. **Sem Alucinações:** Use APENAS os dados fornecidos acima. Se o usuário perguntar o preço de um ativo que não está na lista, diga que não tem acesso a cotações em tempo real fora da carteira dele.
-      4. **Estilo:** Profissional, mas acessível. Use Markdown (negrito) para destacar valores e tickers.
-      5. **Contexto de Queda:** Se o usuário perguntar "por que caiu?", analise os ativos com variação negativa no contexto fornecido.
+      DIRETRIZES:
+      1. Seja objetivo e direto.
+      2. Use Markdown (negrito) para destacar números e tickers.
+      3. Se a pergunta for sobre um fato relevante ou notícia recente que não está nos dados acima, USE A BUSCA DO GOOGLE (ferramenta ativa) para responder.
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Modelo rápido e eficiente para chat
+      model: 'gemini-3-flash-preview',
       contents: query,
       config: {
         systemInstruction,
         temperature: 0.7,
-        topP: 0.95,
+        tools: [{ googleSearch: {} }] // Ativa Grounding com Google Search
       }
     });
 
-    return response.text || "Não consegui gerar uma análise no momento. Tente novamente.";
+    return response.text || "Não consegui gerar uma resposta.";
   } catch (error) {
-    console.error("[Gemini Advisor] Erro de conexão:", error);
-    return "Ocorreu um erro ao conectar com a Inteligência Artificial. Verifique sua conexão e sua chave API.";
+    console.error("[Gemini Advisor] Erro:", error);
+    return "Ocorreu um erro ao conectar com a Inteligência Artificial.";
   }
 };
-    
+
+// Nova função para analisar um ativo específico no Modal
+export const analyzeAsset = async (asset: Asset): Promise<string> => {
+    try {
+        const apiKey = getApiKey();
+        if (!apiKey) return "⚠️ Configure a API_KEY para receber análises de IA sobre este ativo.";
+
+        logApiRequest('gemini');
+        const ai = new GoogleGenAI({ apiKey });
+
+        // Prompt enriquecido para incentivar o uso da ferramenta de busca
+        const prompt = `Faça uma análise rápida e técnica sobre o ativo ${asset.ticker} (${asset.companyName}).
+        Busque notícias recentes ou fatos relevantes na web para complementar.
+        
+        Meus dados: Tenho ${asset.quantity} cotas, Preço Médio R$${asset.averagePrice.toFixed(2)}, Preço Atual R$${asset.currentPrice.toFixed(2)}.
+        O DY é ${asset.dy12m}% e P/VP é ${asset.pvp}.
+        
+        Diga se:
+        1. O ativo está descontado (baseado no P/VP).
+        2. Se estou no lucro ou prejuízo.
+        3. Uma breve opinião sobre o setor (${asset.segment}) e notícias recentes.
+        Seja sucinto (max 100 palavras).`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }] // Ativa Grounding
+            }
+        });
+
+        return response.text || "Sem análise disponível.";
+    } catch (error) {
+        return "Erro ao analisar ativo via Gemini.";
+    }
+};
+
+// Nova função para analisar a estrutura da carteira
+export const analyzePortfolioStruct = async (portfolio: PortfolioItem[], totalValue: number): Promise<string> => {
+    try {
+        const apiKey = getApiKey();
+        if (!apiKey) return "⚠️ Configure a API_KEY para receber insights de alocação.";
+
+        logApiRequest('gemini');
+        const ai = new GoogleGenAI({ apiKey });
+
+        const prompt = `Analise a diversificação desta carteira de R$ ${totalValue.toLocaleString('pt-BR')}:
+        ${portfolio.map(p => `${p.name}: ${p.percentage}%`).join(', ')}.
+        
+        Aponte:
+        1. Riscos de concentração.
+        2. Sugestão de rebalanceamento rápido considerando o cenário macroeconômico atual (faça uma busca breve se necessário).
+        Seja direto.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }] // Ativa Grounding
+            }
+        });
+
+        return response.text || "Sem análise disponível.";
+    } catch (error) {
+        return "Erro ao analisar carteira.";
+    }
+};

@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, Layers, Info, CheckCircle2, Ticket, LayoutGrid, Building2, X, PieChart as PieChartIcon } from 'lucide-react';
+import { ChevronLeft, Layers, Info, CheckCircle2, Ticket, LayoutGrid, Building2, X, PieChart as PieChartIcon, Sparkles } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
 import { Asset, PortfolioItem } from '../types';
+import { analyzePortfolioStruct } from '../services/geminiService';
 
 interface PortfolioModalProps {
   onClose: () => void;
@@ -61,6 +62,8 @@ const renderActiveShape = (props: any) => {
 export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets, totalValue }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('segments');
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [isLoadingAi, setIsLoadingAi] = useState(false);
 
   // Recalcula totalValue se vier 0 ou undefined para evitar divisão por zero
   const safeTotalValue = useMemo(() => {
@@ -116,6 +119,16 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
 
   const onPieEnter = (_: any, index: number) => {
     setActiveIndex(index);
+  };
+
+  const handleAiAnalyze = async () => {
+    if (isLoadingAi) return;
+    setIsLoadingAi(true);
+    // Transforma dados atuais em formato simples para IA
+    const portfolioSimple = chartData.map(c => ({ id: c.id, name: c.name, percentage: c.percentage, color: c.color }));
+    const result = await analyzePortfolioStruct(portfolioSimple, safeTotalValue);
+    setAiInsight(result);
+    setIsLoadingAi(false);
   };
 
   return (
@@ -209,23 +222,37 @@ export const PortfolioModal: React.FC<PortfolioModalProps> = ({ onClose, assets,
 
                 {/* Right Column: List & Stats */}
                 <div className="lg:w-1/2 flex flex-col gap-4 md:gap-6 pb-10">
-                    {/* Score Card */}
+                    {/* AI & Score Card */}
                     <div className="bg-white dark:bg-[#1c1c1e] p-6 md:p-8 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg flex items-center gap-2">
-                                <PieChartIcon className="text-blue-500" /> Índice Diversif.
-                            </h3>
-                            <span className="text-emerald-500 font-bold text-xs md:text-sm bg-emerald-500/10 px-2 md:px-3 py-1 rounded-lg border border-emerald-500/20">Excelente (92)</span>
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg flex items-center gap-2">
+                                    <PieChartIcon className="text-blue-500" /> Análise de Risco
+                                </h3>
+                                {!aiInsight && <p className="text-xs text-gray-500 mt-1">Diversificação por {viewMode}</p>}
+                            </div>
+                            <button onClick={handleAiAnalyze} disabled={isLoadingAi} className="text-xs bg-brand-500 hover:bg-brand-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 transition-all disabled:opacity-50">
+                                <Sparkles size={12} /> {isLoadingAi ? 'Analisando...' : 'Análise IA'}
+                            </button>
                         </div>
-                        <div className="w-full bg-gray-100 dark:bg-[#2c2c2e] rounded-full h-3 md:h-4 overflow-hidden flex gap-1">
-                            <div className="bg-blue-500 h-full w-[40%]"></div>
-                            <div className="bg-emerald-500 h-full w-[30%]"></div>
-                            <div className="bg-amber-500 h-full w-[20%]"></div>
-                            <div className="bg-indigo-500 h-full w-[10%]"></div>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-3">
-                            Carteira bem distribuída, reduzindo riscos específicos.
-                        </p>
+                        
+                        {aiInsight ? (
+                            <div className="mt-2 bg-brand-50 dark:bg-brand-500/10 p-4 rounded-xl border border-brand-100 dark:border-brand-500/20 animate-fade-in">
+                                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-medium whitespace-pre-wrap">{aiInsight}</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="w-full bg-gray-100 dark:bg-[#2c2c2e] rounded-full h-3 md:h-4 overflow-hidden flex gap-1">
+                                    <div className="bg-blue-500 h-full w-[40%]"></div>
+                                    <div className="bg-emerald-500 h-full w-[30%]"></div>
+                                    <div className="bg-amber-500 h-full w-[20%]"></div>
+                                    <div className="bg-indigo-500 h-full w-[10%]"></div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-3">
+                                    Uma carteira diversificada protege seu patrimônio contra oscilações de um único setor.
+                                </p>
+                            </>
+                        )}
                     </div>
 
                     {/* Breakdown List */}

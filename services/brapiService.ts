@@ -6,7 +6,7 @@
 import { logApiRequest } from './telemetryService.ts';
 
 const BRAPI_BASE_URL = 'https://brapi.dev/api';
-// Cache de curta duração para evitar spam na API, mas garantir dados frescos
+// Cache de curta duração para evitar spam na API
 const CACHE_DURATION = 2 * 60 * 1000; 
 
 // Cache Granular
@@ -35,7 +35,6 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
   try {
     logApiRequest('brapi');
     const ts = new Date().getTime();
-    // Adicionado fundamental=true para garantir dados ricos se necessário, embora para histórico o foco seja preço
     const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?range=${range}&interval=${interval}&token=${BRAPI_TOKEN}&fundamental=true&ts=${ts}`, {
         cache: 'no-store'
     });
@@ -57,53 +56,61 @@ export const fetchHistoricalData = async (ticker: string, range: string = '1y', 
   }
 };
 
-// Implementação robusta de Batch Request
+// Implementação de Requisições Individuais (One-by-One em Paralelo)
 export const fetchTickersData = async (tickers: string[]) => {
   if (!tickers.length || !BRAPI_TOKEN) return [];
   
-  // Limpa e prepara tickers
+  // Limpa duplicatas
   const uniqueTickers = [...new Set(tickers)].filter(t => t && t.length > 0);
   if (uniqueTickers.length === 0) return [];
 
-  // FIX: Não usar encodeURIComponent na lista inteira de uma vez, pois a BRAPI espera vírgulas literais
-  const tickersString = uniqueTickers.join(',');
   const ts = new Date().getTime();
 
   try {
-    logApiRequest('brapi');
-    
-    // Chamada única para múltiplos ativos
-    // FIX: Adicionado 'fundamental=true' para trazer setor, logo e dividendos detalhados
-    const url = `${BRAPI_BASE_URL}/quote/${tickersString}?token=${BRAPI_TOKEN}&fundamental=true&ts=${ts}`;
-    
-    const response = await fetch(url, {
-      cache: 'no-store',
-      headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-      }
-    });
+    // Cria uma array de Promises, uma para cada ticker individualmente
+    const requests = uniqueTickers.map(async (ticker) => {
+        // Verifica cache individual primeiro
+        const now = Date.now();
+        const cached = tickerCache.get(ticker);
+        if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+            return cached.data;
+        }
 
-    if (!response.ok) {
-        console.warn(`[BRAPI] Erro HTTP ${response.status} ao buscar cotações.`);
-        return [];
-    }
+        try {
+            logApiRequest('brapi');
+            // Busca individual
+            const response = await fetch(`${BRAPI_BASE_URL}/quote/${ticker}?token=${BRAPI_TOKEN}&fundamental=true&ts=${ts}`, {
+                cache: 'no-store'
+            });
 
-    const json = await response.json();
-    const results = json.results || [];
-    
-    // Atualiza o cache com os dados frescos
-    const now = Date.now();
-    results.forEach((item: any) => {
-        if (item.symbol) {
-            tickerCache.set(item.symbol, { timestamp: now, data: item });
+            if (!response.ok) {
+                console.warn(`[BRAPI] Falha ao buscar ${ticker}: ${response.status}`);
+                return null;
+            }
+
+            const json = await response.json();
+            const result = json.results?.[0]; // Pega o primeiro (e único) resultado
+
+            if (result) {
+                tickerCache.set(result.symbol, { timestamp: now, data: result });
+                return result;
+            }
+            return null;
+        } catch (err) {
+            console.error(`[BRAPI] Erro de rede ao buscar ${ticker}`, err);
+            return null;
         }
     });
-    
-    return results;
+
+    // Aguarda todas as requisições terminarem (Promise.allSettled poderia ser usado, 
+    // mas Promise.all com catch interno no map funciona bem para filtrar nulos)
+    const results = await Promise.all(requests);
+
+    // Filtra os nulos (falhas) e retorna apenas os dados válidos
+    return results.filter(item => item !== null);
+
   } catch (error) {
-    console.error("[BRAPI] Erro de conexão em lote:", error);
+    console.error("[BRAPI] Erro geral na busca de ativos:", error);
     return [];
   }
 };
