@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Asset } from '../types';
-import { Calendar, ChevronRight, Clock } from 'lucide-react';
+import { Calendar, ChevronRight, Clock, DollarSign } from 'lucide-react';
 
 export const DividendCalendarCard: React.FC<{ assets: Asset[]; onClick: () => void }> = ({ assets, onClick }) => {
   const currentMonth = new Date().getMonth();
@@ -14,6 +14,7 @@ export const DividendCalendarCard: React.FC<{ assets: Asset[]; onClick: () => vo
     return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
   };
 
+  // 1. Tenta encontrar proventos neste mês
   const monthlyDividends = assets.filter(asset => {
       const date = parseAssetDate(asset.lastDividendDate);
       return date && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
@@ -21,13 +22,30 @@ export const DividendCalendarCard: React.FC<{ assets: Asset[]; onClick: () => vo
 
   const totalMonth = monthlyDividends.reduce((acc, curr) => acc + (curr.lastDividend * curr.quantity), 0);
   
+  // 2. Encontra o próximo pagamento (Futuro)
   const today = new Date();
   today.setHours(0,0,0,0);
   
-  const nextPayment = monthlyDividends
-    .map(a => ({...a, dateObj: parseAssetDate(a.lastDividendDate) as Date}))
-    .filter(a => a.dateObj >= today)
-    .sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime())[0];
+  const nextPayment = useMemo(() => {
+      const validAssets = assets
+        .map(a => ({...a, dateObj: parseAssetDate(a.lastDividendDate)}))
+        .filter(a => a.dateObj !== null);
+
+      // Prioridade: Futuro
+      const future = validAssets
+        .filter(a => a.dateObj! >= today)
+        .sort((a, b) => a.dateObj!.getTime() - b.dateObj!.getTime());
+      
+      if (future.length > 0) return { asset: future[0], isFuture: true };
+
+      // Fallback: Último pago (Passado mais recente)
+      const past = validAssets
+         .sort((a, b) => b.dateObj!.getTime() - a.dateObj!.getTime());
+      
+      if (past.length > 0) return { asset: past[0], isFuture: false };
+      
+      return null;
+  }, [assets]);
 
   const monthsBr = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
@@ -49,7 +67,7 @@ export const DividendCalendarCard: React.FC<{ assets: Asset[]; onClick: () => vo
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
              </h3>
              <p className="text-gray-500 dark:text-gray-400 text-[10px] font-medium mt-1">
-                Previsão Mensal
+                Previsão de Dividendos
              </p>
            </div>
         </div>
@@ -61,23 +79,36 @@ export const DividendCalendarCard: React.FC<{ assets: Asset[]; onClick: () => vo
 
       <div className="flex items-end justify-between relative z-10">
           <div>
-              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total a Receber</p>
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
-                  R$ {totalMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </h2>
+              {totalMonth > 0 ? (
+                  <>
+                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total este mês</p>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                        R$ {totalMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </h2>
+                  </>
+              ) : (
+                  <>
+                    <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Próximo 30 Dias</p>
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight flex items-center gap-2 text-opacity-50">
+                         --
+                    </h2>
+                  </>
+              )}
           </div>
 
-          {nextPayment && (
-              <div className="bg-indigo-50/50 dark:bg-indigo-500/10 border border-indigo-100/50 dark:border-indigo-500/20 rounded-2xl p-2.5 flex items-center gap-3 max-w-[140px] backdrop-blur-sm">
-                  <div className="flex flex-col items-center justify-center bg-white/80 dark:bg-[#2c2c2e] w-9 h-9 rounded-xl shadow-sm">
-                      <span className="text-[8px] font-bold text-gray-400 uppercase">{nextPayment.dateObj.getDate()}</span>
+          {nextPayment && nextPayment.asset.dateObj && (
+              <div className="bg-indigo-50/50 dark:bg-indigo-500/10 border border-indigo-100/50 dark:border-indigo-500/20 rounded-2xl p-2.5 flex items-center gap-3 max-w-[150px] backdrop-blur-sm">
+                  <div className={`flex flex-col items-center justify-center w-9 h-9 rounded-xl shadow-sm ${nextPayment.isFuture ? 'bg-white/80 dark:bg-[#2c2c2e]' : 'bg-gray-100 dark:bg-white/5 grayscale'}`}>
+                      <span className="text-[8px] font-bold text-gray-400 uppercase">{nextPayment.asset.dateObj.getDate()}</span>
                       <span className="text-[8px] font-bold text-gray-900 dark:text-white uppercase">
-                        {monthsBr[nextPayment.dateObj.getMonth()]}
+                        {monthsBr[nextPayment.asset.dateObj.getMonth()]}
                       </span>
                   </div>
                   <div className="overflow-hidden">
-                      <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide truncate">Próximo</p>
-                      <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{nextPayment.ticker}</p>
+                      <p className={`text-[9px] font-bold uppercase tracking-wide truncate ${nextPayment.isFuture ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500'}`}>
+                          {nextPayment.isFuture ? 'Próximo' : 'Último'}
+                      </p>
+                      <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{nextPayment.asset.ticker}</p>
                   </div>
               </div>
           )}

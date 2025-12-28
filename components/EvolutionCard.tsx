@@ -1,18 +1,20 @@
 
 import React from 'react';
-import { TrendingUp, ChevronRight, BarChart3 } from 'lucide-react';
+import { TrendingUp, ChevronRight, BarChart3, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 
 interface EvolutionCardProps {
   onClick: () => void;
+  data: { value: number }[];
+  value: number;
+  percentage: number;
 }
 
-const data = [
-  { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }, 
-  { value: 0 }, { value: 0 }, { value: 0 }, { value: 0 }
-];
+export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick, data = [], value = 0, percentage = 0 }) => {
+  // Se não houver dados, cria um mock flat
+  const chartData = data.length > 0 ? data : [{ value: 0 }, { value: 0 }, { value: 0 }];
+  const isPositive = value >= 0;
 
-export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
   return (
     <div 
       onClick={onClick}
@@ -44,29 +46,30 @@ export const EvolutionCard: React.FC<EvolutionCardProps> = ({ onClick }) => {
       <div className="flex items-end justify-between relative z-10">
          <div>
             <div className="flex items-center gap-1.5 mb-1">
-                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20 px-1.5 py-0.5 rounded-md text-[10px] font-bold backdrop-blur-sm flex items-center gap-1">
-                    <TrendingUp size={10} /> 0.00%
+                <span className={`border px-1.5 py-0.5 rounded-md text-[10px] font-bold backdrop-blur-sm flex items-center gap-1 ${isPositive ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 dark:text-rose-500 border-rose-500/20'}`}>
+                    {isPositive ? <TrendingUp size={10} /> : <TrendingDown size={10} />} 
+                    {Math.abs(percentage).toFixed(2)}%
                 </span>
                 <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">Acumulado</span>
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                R$ 0,00
+            <h2 className={`text-3xl font-bold tracking-tight ${isPositive ? 'text-gray-900 dark:text-white' : 'text-rose-500'}`}>
+                {isPositive ? '+' : ''}R$ {Math.abs(value).toLocaleString('pt-BR', { notation: 'compact' })}
             </h2>
          </div>
 
          <div className="h-10 w-24 relative mb-1 opacity-50">
             <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                     <defs>
                         <linearGradient id="colorEvo" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.4}/>
-                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0}/>
+                            <stop offset="0%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0.4}/>
+                            <stop offset="100%" stopColor={isPositive ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
                         </linearGradient>
                     </defs>
                     <Area 
                         type="monotone" 
                         dataKey="value" 
-                        stroke="#6366f1" 
+                        stroke={isPositive ? '#10b981' : '#f43f5e'} 
                         strokeWidth={2} 
                         fill="url(#colorEvo)" 
                     />

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo } from 'react';
 import { 
   User, Shield, Calculator, Book, LogOut, ChevronRight, ChevronLeft,
@@ -115,7 +116,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
 
   const handleExportBackup = () => {
     setIsExporting(true);
-    const data = { version: "3.0.0", timestamp: new Date().toISOString(), assets, transactions };
+    const data = { version: "3.0.1", timestamp: new Date().toISOString(), assets, transactions };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -192,7 +193,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                  </div>
              </div>
          );
-      // ... (outros cases mantidos simplificados para poupar espaço, mas funcionalidade de backup e etc segue o padrão)
       case 'backup':
           return (
             <div className="animate-slide-up pb-10">
@@ -257,7 +257,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
                 </div>
               </div>
               <h3 className="text-2xl font-black tracking-tighter">Invest Dashboard</h3>
-              <p className="text-brand-500 font-bold text-xs uppercase tracking-widest mb-8">Versão 3.0.0</p>
+              <p className="text-brand-500 font-bold text-xs uppercase tracking-widest mb-8">Versão 3.0.1</p>
             </div>
           </div>
         );
@@ -272,7 +272,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ currentTheme, setCur
       <h3 className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-3 px-2 mt-4 ml-1">Geral</h3>
       <div className="bg-white/60 dark:bg-[#1c1c1e]/60 rounded-[2rem] overflow-hidden border border-white/40 dark:border-white/5 mb-8 shadow-lg">
         <SettingsItem icon={User} title="Meu Perfil" subtitle="Investidor Pro" onClick={() => setActiveSection('profile')} />
-        <SettingsItem icon={RefreshCcw} title="Atualização de Sistema" subtitle="Versão 3.0.0" onClick={() => setActiveSection('system')} />
+        <SettingsItem icon={RefreshCcw} title="Atualização de Sistema" subtitle="Versão 3.0.1" onClick={() => setActiveSection('system')} />
         <SettingsItem icon={Database} title="Backup & Dados" subtitle="Importar e Exportar" onClick={() => setActiveSection('backup')} hasBorder={false} />
       </div>
 

@@ -28,26 +28,27 @@ const RealPowerModal = lazy(() => import('./components/RealPowerModal.tsx').then
 const EvolutionModal = lazy(() => import('./components/EvolutionModal.tsx').then(m => ({ default: m.EvolutionModal })));
 const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then(m => ({ default: m.PortfolioModal })));
 
+// Dados iniciais com datas atualizadas para 2025 para a Agenda funcionar
 const INITIAL_ASSETS: Asset[] = [
     {
         id: 'PETR4', ticker: 'PETR4', shortName: 'Petrobras', companyName: 'Petroleo Brasileiro S.A. Petrobras',
         assetType: 'Ação', segment: 'Petróleo e Gás', allocationType: 'Brasil',
         quantity: 100, currentPrice: 38.50, totalValue: 3850, dailyChange: 1.5,
-        averagePrice: 32.00, totalCost: 3200, lastDividend: 1.20, lastDividendDate: '20/11/2024',
+        averagePrice: 32.00, totalCost: 3200, lastDividend: 1.20, lastDividendDate: '20/03/2025',
         dy12m: 18.5, color: '#f59e0b', pvp: 0.95, vp: 40.00, liquidity: 'High', netWorth: '500B'
     },
     {
         id: 'VALE3', ticker: 'VALE3', shortName: 'Vale', companyName: 'Vale S.A.',
         assetType: 'Ação', segment: 'Mineração', allocationType: 'Brasil',
         quantity: 50, currentPrice: 62.10, totalValue: 3105, dailyChange: -0.8,
-        averagePrice: 65.00, totalCost: 3250, lastDividend: 2.10, lastDividendDate: '01/09/2024',
+        averagePrice: 65.00, totalCost: 3250, lastDividend: 2.10, lastDividendDate: '01/04/2025',
         dy12m: 8.2, color: '#10b981', pvp: 1.2, vp: 50.00, liquidity: 'High', netWorth: '300B'
     },
     {
         id: 'MXRF11', ticker: 'MXRF11', shortName: 'Maxi Renda', companyName: 'Maxi Renda FII',
         assetType: 'FII', segment: 'Papel', allocationType: 'FII',
         quantity: 200, currentPrice: 10.50, totalValue: 2100, dailyChange: 0.2,
-        averagePrice: 10.10, totalCost: 2020, lastDividend: 0.11, lastDividendDate: '15/12/2024',
+        averagePrice: 10.10, totalCost: 2020, lastDividend: 0.11, lastDividendDate: '15/02/2025',
         dy12m: 12.5, color: '#3b82f6', pvp: 1.01, vp: 10.40, liquidity: 'High', netWorth: '2.5B'
     }
 ];
@@ -56,7 +57,6 @@ const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6
 
 const App: React.FC = () => {
   const [isAppLoading, setIsAppLoading] = useState(true);
-  // Alterado de booleano para string para controlar mensagens de status
   const [refreshStatus, setRefreshStatus] = useState<string>(''); 
   
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -135,7 +135,6 @@ const App: React.FC = () => {
     
     isRefreshingRef.current = true;
     
-    // UX: Sequência de mensagens para não causar ansiedade
     const steps = [
         { msg: 'Conectando à B3...', delay: 0 },
         { msg: 'Atualizando Cotações...', delay: 800 },
@@ -145,7 +144,6 @@ const App: React.FC = () => {
     let currentStepIndex = 0;
     setRefreshStatus(steps[0].msg);
 
-    // Timer para garantir que o usuário leia as mensagens (UX pacing)
     const interval = setInterval(() => {
         currentStepIndex++;
         if (currentStepIndex < steps.length) {
@@ -157,7 +155,7 @@ const App: React.FC = () => {
         const tickers: string[] = Array.from(new Set(currentAssets.map(a => a.ticker))); 
         const liveData = await fetchTickersData(tickers);
         
-        clearInterval(interval); // Para o timer de mensagens assim que a API responder
+        clearInterval(interval); 
         setRefreshStatus('Finalizando...');
 
         if (liveData && liveData.length > 0) {
@@ -197,7 +195,6 @@ const App: React.FC = () => {
           }));
         }
         
-        // Mensagem de sucesso breve
         setRefreshStatus('Tudo Atualizado!');
         setTimeout(() => setRefreshStatus(''), 1500);
 
@@ -287,7 +284,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isAppLoading) { 
-        setTimeout(() => refreshMarketData(true), 1000); // Atraso leve na inicialização para smooth entry
+        setTimeout(() => refreshMarketData(true), 1000); 
     }
   }, [isAppLoading, refreshMarketData]);
 
@@ -316,10 +313,58 @@ const App: React.FC = () => {
       totalBalance: balance, totalInvested: cost, yieldOnCost: cost > 0 ? (projected / cost) * 100 : 0,
       projectedAnnualIncome: projected, capitalGain: balance - cost, dailyChange: weightedAvgChange,
       dailyChangeValue: balance * (weightedAvgChange / 100),
-      // Flag extra para passar ao Card
       isSyncing: !!refreshStatus && refreshStatus !== 'Tudo Atualizado!'
     };
   }, [assets, refreshStatus]);
+
+  // Cálculo da Evolução Real (Baseado em Transações)
+  const evolutionData = useMemo(() => {
+    // Se não houver transações, retorna zerado para evitar crash
+    if (transactions.length === 0) return { history: [{value: 0}], profit: 0, profitPercent: 0 };
+    
+    // Lucro Total Atual
+    const profit = summaryData.capitalGain;
+    const profitPercent = summaryData.totalInvested > 0 ? (profit / summaryData.totalInvested) * 100 : 0;
+
+    // Gerar pontos do gráfico com base nos últimos 6 meses de transações reais
+    const points: { value: number }[] = [];
+    const now = new Date();
+    
+    // Função helper para parsear datas das transações ("DD MMM YYYY")
+    const parseDate = (d: string) => {
+        const ms: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
+        const p = d.split(' ');
+        if(p.length < 3) return new Date();
+        return new Date(parseInt(p[2]), ms[p[1]] || 0, parseInt(p[0]));
+    };
+
+    // Gera 6 pontos (últimos 6 meses)
+    for (let i = 5; i >= 0; i--) {
+        const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        // Filtra transações anteriores a data alvo
+        const accumTransactions = transactions.filter(t => parseDate(t.date) <= targetDate);
+        
+        // Calcula quanto tinha investido até aquele momento
+        const investedAtTime = accumTransactions.reduce((acc, t) => {
+            return acc + (t.type === 'Compra' ? t.total : -t.total);
+        }, 0);
+
+        // Como não temos histórico de preço de mercado para cada dia, 
+        // usamos o valor investido como proxy para o passado, 
+        // e o valor atual real para o presente.
+        points.push({ value: investedAtTime });
+    }
+
+    // O último ponto deve refletir o valor de mercado atual para mostrar o salto de valorização (se houver)
+    // Se quiser mostrar apenas evolução de aportes, use summaryData.totalInvested. 
+    // Se quiser mostrar valor patrimonial, use summaryData.totalBalance.
+    // Vamos usar totalInvested no histórico e CurrentBalance no último para dar a ideia de resultado final.
+    if (points.length > 0) {
+        points[points.length - 1] = { value: summaryData.totalBalance };
+    }
+
+    return { history: points, profit, profitPercent };
+  }, [transactions, summaryData]);
 
   const portfolioData = useMemo(() => {
     const total = summaryData.totalBalance;
@@ -352,7 +397,6 @@ const App: React.FC = () => {
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} currentTheme={currentTheme} />
       <div className="flex-1 flex flex-col h-screen relative z-10 w-full overflow-hidden">
         
-        {/* Barra de Progresso Global no Topo da Área de Conteúdo */}
         {refreshStatus && (
             <div className="absolute top-0 left-0 w-full h-1 z-50 overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-transparent via-brand-500 to-transparent w-[50%] animate-[shimmer_1.5s_infinite_linear]"></div>
@@ -361,7 +405,6 @@ const App: React.FC = () => {
 
         <Header 
           title={showNotifications ? "Notificações" : activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
-          // O subtítulo agora exibe o status dinâmico ou o padrão
           subtitle={refreshStatus || (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
           showBackButton={(['settings'].includes(activeTab) || showNotifications) && window.innerWidth < 768} 
           showAddButton={!showNotifications && ['dashboard', 'wallet', 'transactions'].includes(activeTab)}
@@ -400,7 +443,17 @@ const App: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
                     <div className="md:col-span-8"><SummaryCard data={summaryData} /></div>
                     <div className="md:col-span-4"><PortfolioChart items={portfolioData} onClick={() => setModalOpen('portfolio')} /></div>
-                    <div className="md:col-span-6 lg:col-span-3"><EvolutionCard onClick={() => setModalOpen('evolution')} /></div>
+                    
+                    {/* Passando dados REAIS calculados para o Card de Evolução */}
+                    <div className="md:col-span-6 lg:col-span-3">
+                        <EvolutionCard 
+                            onClick={() => setModalOpen('evolution')} 
+                            data={evolutionData.history}
+                            value={evolutionData.profit}
+                            percentage={evolutionData.profitPercent}
+                        />
+                    </div>
+                    
                     <div className="md:col-span-6 lg:col-span-3"><DividendCalendarCard assets={assets} onClick={() => setModalOpen('dividendCalendar')} /></div>
                     <div className="md:col-span-6 lg:col-span-3"><IncomeReportCard assets={assets} onClick={() => setModalOpen('incomeReport')} /></div>
                     <div className="md:col-span-6 lg:col-span-3"><InflationAnalysisCard onClick={() => setModalOpen('realPower')} /></div>

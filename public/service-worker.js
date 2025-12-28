@@ -1,5 +1,5 @@
 
-const CACHE_VERSION = 'v3.0.0-system-update'; // Incrementado
+const CACHE_VERSION = 'v3.0.1';
 const STATIC_CACHE = `invest-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `invest-runtime-${CACHE_VERSION}`;
 

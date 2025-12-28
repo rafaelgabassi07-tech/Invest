@@ -56,7 +56,7 @@ export const SystemUpdateOverlay: React.FC<SystemUpdateOverlayProps> = ({ update
             <div>
                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Atualização de Sistema</h2>
                <p className="text-gray-500 text-sm font-medium leading-relaxed">
-                 A versão 3.0.0 está pronta para instalar. Inclui melhorias de performance e novas animações.
+                 A versão 3.0.1 está pronta para instalar. Inclui melhorias de performance e correções na evolução patrimonial.
                </p>
             </div>
           </div>

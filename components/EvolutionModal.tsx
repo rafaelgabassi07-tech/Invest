@@ -60,36 +60,42 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
 
     // 2. Acumular saldo patrimonial (Investido)
     let currentInvested = 0;
-    const historyPoints: { date: string, value: number }[] = [];
+    const historyPoints: { date: string, value: number, fullDate: number }[] = [];
 
     sorted.forEach((t: Transaction) => {
         // Lógica de Acúmulo: Compra aumenta base, Venda diminui base
         if (t.type === 'Compra') currentInvested += t.total;
         else currentInvested -= t.total;
 
-        // Simplificação da data para o gráfico (Mês/Ano)
+        // Formatação da data para o gráfico
+        const parseDate = (d: string) => {
+            const ms: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
+            const p = d.split(' ');
+            return new Date(parseInt(p[2]), ms[p[1]] || 0, parseInt(p[0])).getTime();
+        };
+        const timestamp = parseDate(t.date);
+        
         const parts = t.date.split(' ');
         const shortDate = `${parts[1]}/${parts[2].slice(2)}`;
         
         historyPoints.push({
             date: shortDate,
             value: currentInvested,
+            fullDate: timestamp
         });
     });
 
-    // Filtragem para evitar excesso de pontos (pega o último de cada mês)
-    const filteredPoints: typeof historyPoints = [];
-    const seenMonths = new Set();
-    
-    for (let i = historyPoints.length - 1; i >= 0; i--) {
-        if (!seenMonths.has(historyPoints[i].date)) {
-            filteredPoints.unshift(historyPoints[i]);
-            seenMonths.add(historyPoints[i].date);
-        }
+    // Se houver poucos pontos, adiciona o ponto "Hoje" com o valor atual
+    if (historyPoints.length > 0) {
+        historyPoints.push({
+            date: 'Hoje',
+            value: stats.invested, // Usa o total investido atual calculado no stats
+            fullDate: Date.now()
+        });
     }
-    
-    return filteredPoints;
-  }, [localTransactions]);
+
+    return historyPoints;
+  }, [localTransactions, stats.invested]);
 
   return (
     <div className="fixed inset-0 left-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
@@ -103,7 +109,7 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
           
           <div className="flex flex-col items-center">
              <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">Evolução Patrimonial</h1>
-             <p className="text-[10px] text-brand-500 font-bold uppercase tracking-wider">Crescimento Histórico</p>
+             <p className="text-[10px] text-brand-500 font-bold uppercase tracking-wider">Acumulação de Capital</p>
           </div>
           
           <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
@@ -117,15 +123,15 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
                     <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
-                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Investido (Custo)</p>
+                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Aportado</p>
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white">R$ {stats.invested.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
                     </div>
                     <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
-                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Valor Atual (Mercado)</p>
+                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Patrimônio Atual</p>
                         <h3 className="text-2xl font-bold text-gray-900 dark:text-white">R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
                     </div>
                     <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg">
-                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Resultado Líquido</p>
+                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Lucro / Prejuízo</p>
                         <div className="flex items-center gap-2">
                             <h3 className={`text-2xl font-bold ${stats.profit >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {stats.profit >= 0 ? '+' : ''}R$ {stats.profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -158,22 +164,22 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
                                     <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
                                     <Tooltip 
                                         contentStyle={{ backgroundColor: '#1c1c1e', border: 'none', borderRadius: '12px', color: '#fff' }}
-                                        formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Investido Acumulado']}
+                                        formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Total Investido']}
                                     />
                                     <Area 
-                                        type="monotone" 
+                                        type="stepAfter" 
                                         dataKey="value" 
                                         stroke="var(--brand-primary)" 
                                         strokeWidth={3} 
                                         fill="url(#colorEvol)" 
-                                        animationDuration={2000}
+                                        animationDuration={1000}
                                     />
                                 </AreaChart>
                             </ResponsiveContainer>
                             ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center opacity-40">
                                     <TrendingUp size={48} className="text-gray-400 mb-4" />
-                                    <p className="text-gray-500 font-bold">Sem dados suficientes para o gráfico</p>
+                                    <p className="text-gray-500 font-bold">Adicione transações para ver o gráfico.</p>
                                 </div>
                             )}
                         </div>
