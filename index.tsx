@@ -27,19 +27,19 @@ window.updateApp = () => {
         console.log('[SW] Usuário confirmou atualização. Enviando SKIP_WAITING.');
         waitingWorker.postMessage({ type: 'SKIP_WAITING' });
     } else {
-        console.log('[SW] Nenhum worker esperando atualização.');
+        console.log('[SW] Nenhum worker esperando atualização. Recarregando forçado.');
         window.location.reload(); // Fallback
     }
 };
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Tenta registrar o SW apenas se estivermos em produção ou se o arquivo existir
-    // O erro 404 ocorre se o arquivo não estiver na pasta 'public/' do Vite
+    // Registra o SW. O arquivo deve estar em public/service-worker.js
     navigator.serviceWorker.register('/service-worker.js')
       .then(registration => {
-        console.log('[SW] Registrado. Escopo:', registration.scope);
+        console.log('[SW] Registrado com sucesso. Escopo:', registration.scope);
 
+        // Se já houver um worker esperando ativação (atualização baixada mas não aplicada)
         if (registration.waiting) {
             waitingWorker = registration.waiting;
             window.dispatchEvent(new Event('invest-update-available'));
@@ -50,6 +50,7 @@ if ('serviceWorker' in navigator) {
             if (installingWorker) {
                 installingWorker.onstatechange = () => {
                     if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        console.log('[SW] Nova atualização disponível.');
                         waitingWorker = installingWorker;
                         window.dispatchEvent(new Event('invest-update-available'));
                     }
@@ -58,14 +59,11 @@ if ('serviceWorker' in navigator) {
         };
       })
       .catch(error => {
-        // Silencia erro comum de 404 em dev ou configuração incorreta de pasta
-        if (error.message.includes('404') || error.message.includes('MIME')) {
-            console.warn('[SW] Service Worker não encontrado ou tipo incorreto. Verifique se service-worker.js está na pasta public/.');
-        } else {
-            console.warn('[SW] Falha no registro:', error);
-        }
+        // Ignora erros comuns de desenvolvimento
+        console.warn('[SW] Falha no registro:', error);
       });
       
+    // Recarrega a página quando o novo SW assumir o controle
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         console.log('[SW] Controlador alterado. Recarregando app...');
         window.location.reload();
