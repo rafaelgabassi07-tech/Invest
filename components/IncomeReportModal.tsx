@@ -1,8 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Asset } from '../types';
-import { ChevronLeft, RefreshCw, BarChart3, TrendingUp, Calendar, ArrowUpRight, DollarSign, PieChart, X } from 'lucide-react';
+import { ChevronLeft, RefreshCw, BarChart3, TrendingUp, Calendar, ArrowUpRight, DollarSign, PieChart, X, Sparkles } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { getIncomeAnalysis } from '../services/geminiService';
 
 interface IncomeReportModalProps {
   assets: Asset[];
@@ -10,6 +11,8 @@ interface IncomeReportModalProps {
 }
 
 export const IncomeReportModal: React.FC<IncomeReportModalProps> = ({ assets, onClose }) => {
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
   
   const stats = useMemo(() => {
     const currentMonthlyIncome = assets.reduce((acc, asset) => acc + (asset.lastDividend * asset.quantity), 0);
@@ -33,10 +36,22 @@ export const IncomeReportModal: React.FC<IncomeReportModalProps> = ({ assets, on
         color: asset.color
     })).sort((a, b) => b.monthly - a.monthly).slice(0, 5);
 
-    topPayers.forEach(p => p.share = (p.monthly / currentMonthlyIncome) * 100);
+    topPayers.forEach(p => p.share = currentMonthlyIncome > 0 ? (p.monthly / currentMonthlyIncome) * 100 : 0);
 
     return { currentMonthlyIncome, totalAccumulated, history, topPayers, average: totalAccumulated / (currentMonthIndex + 1) };
   }, [assets]);
+
+  useEffect(() => {
+      if (stats.topPayers.length > 0) {
+          const fetchAnalysis = async () => {
+              setLoadingAi(true);
+              const text = await getIncomeAnalysis(stats.topPayers);
+              setAiAnalysis(text);
+              setLoadingAi(false);
+          };
+          fetchAnalysis();
+      }
+  }, [stats.topPayers]);
 
   return (
     <div className="fixed inset-0 left-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
@@ -133,8 +148,31 @@ export const IncomeReportModal: React.FC<IncomeReportModalProps> = ({ assets, on
                         </div>
                     </div>
 
-                    {/* Sidebar: Top Payers (Col 4) */}
+                    {/* Sidebar: Top Payers & AI (Col 4) */}
                     <div className="lg:col-span-4 flex flex-col gap-6">
+                        
+                         {/* AI Risk Analysis */}
+                         <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg relative overflow-hidden">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Sparkles size={16} className="text-brand-500" />
+                                <h4 className="text-sm font-bold text-gray-900 dark:text-white">Análise de Risco (Dividendos)</h4>
+                            </div>
+                            {loadingAi ? (
+                                <div className="animate-pulse flex space-x-4">
+                                    <div className="flex-1 space-y-2 py-1">
+                                        <div className="h-2 bg-gray-200 dark:bg-white/10 rounded"></div>
+                                        <div className="h-2 bg-gray-200 dark:bg-white/10 rounded w-3/4"></div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="prose prose-xs dark:prose-invert">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap">
+                                        {aiAnalysis || "Analisando sustentabilidade dos maiores pagadores..."}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
                         <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] md:rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl flex-1 flex flex-col">
                              <div className="flex items-center justify-between mb-6 px-2">
                                 <h3 className="text-gray-900 dark:text-white font-bold text-lg flex items-center gap-2">

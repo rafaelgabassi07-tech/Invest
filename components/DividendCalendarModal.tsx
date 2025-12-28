@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Asset } from '../types';
-import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, DollarSign, TrendingUp, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, Sparkles } from 'lucide-react';
+import { getUpcomingDividends } from '../services/geminiService';
 
 interface DividendCalendarModalProps {
   assets: Asset[];
@@ -13,6 +14,21 @@ const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Jul
 
 export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ assets, onClose }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [aiForecast, setAiForecast] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  // Busca previsões ao abrir
+  useEffect(() => {
+    const fetchForecast = async () => {
+        if (assets.length === 0) return;
+        setLoadingAi(true);
+        const tickers = assets.map(a => a.ticker);
+        const text = await getUpcomingDividends(tickers);
+        setAiForecast(text);
+        setLoadingAi(false);
+    };
+    fetchForecast();
+  }, [assets]);
 
   const parseAssetDate = (dateStr: string) => {
     if (!dateStr) return null;
@@ -133,7 +149,7 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ as
                     </div>
                 </div>
 
-                {/* Right: Summary & List */}
+                {/* Right: Summary & AI Radar */}
                 <div className="w-full lg:w-96 flex flex-col gap-6">
                     <div className="bg-indigo-600 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-600/20 group">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:bg-white/20 transition-colors"></div>
@@ -143,6 +159,28 @@ export const DividendCalendarModal: React.FC<DividendCalendarModalProps> = ({ as
                                 R$ {totalMonth.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </h2>
                             <p className="text-indigo-200 text-sm font-medium">Referente a {events.length} pagamentos</p>
+                        </div>
+                    </div>
+
+                    {/* AI Radar Section */}
+                    <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] md:rounded-[2.5rem] p-6 border border-gray-200 dark:border-white/5 shadow-xl">
+                        <div className="flex items-center gap-2 mb-4">
+                             <Sparkles size={18} className="text-indigo-500" />
+                             <h3 className="font-bold text-gray-900 dark:text-white">Radar de Proventos (IA)</h3>
+                        </div>
+                        <div className="bg-indigo-50 dark:bg-indigo-500/10 rounded-xl p-4 border border-indigo-100 dark:border-indigo-500/20">
+                             {loadingAi ? (
+                                 <div className="flex gap-2 items-center text-xs text-gray-500">
+                                     <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></div>
+                                     Buscando anúncios recentes na web...
+                                 </div>
+                             ) : (
+                                 <div className="prose prose-xs dark:prose-invert">
+                                     <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                         {aiForecast || "Nenhum anúncio relevante encontrado recentemente."}
+                                     </p>
+                                 </div>
+                             )}
                         </div>
                     </div>
 

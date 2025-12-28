@@ -1,17 +1,20 @@
 
-import React, { useMemo } from 'react';
-import { ChevronLeft, TrendingUp, X } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { ChevronLeft, TrendingUp, X, Sparkles } from 'lucide-react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Transaction } from '../types';
+import { getMarketBenchmarks } from '../services/geminiService';
 
 interface EvolutionModalProps {
   onClose: () => void;
   totalValue: number;
-  transactions?: Transaction[]; // Opcional, mas idealmente passado pelo pai
+  transactions?: Transaction[];
 }
 
 export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalValue, transactions = [] }) => {
-  
+  const [aiBenchmark, setAiBenchmark] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
   // Utiliza as transações passadas via props, ou tenta fallback local apenas se vazio
   const localTransactions = useMemo(() => {
       if (transactions && transactions.length > 0) return transactions;
@@ -20,6 +23,26 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
           return saved ? JSON.parse(saved) : [];
       } catch { return []; }
   }, [transactions]);
+
+  const stats = useMemo(() => {
+     const invested = localTransactions.filter((t: Transaction) => t.type === 'Compra').reduce((a: number, b: Transaction) => a + b.total, 0) - 
+                      localTransactions.filter((t: Transaction) => t.type === 'Venda').reduce((a: number, b: Transaction) => a + b.total, 0);
+     const profit = totalValue - invested;
+     const profitPercent = invested > 0 ? (profit / invested) * 100 : 0;
+     
+     return { invested, profit, profitPercent };
+  }, [localTransactions, totalValue]);
+
+  // Busca benchmark ao montar
+  useEffect(() => {
+      const fetchBenchmark = async () => {
+          setLoadingAi(true);
+          const text = await getMarketBenchmarks(stats.profitPercent);
+          setAiBenchmark(text);
+          setLoadingAi(false);
+      };
+      fetchBenchmark();
+  }, [stats.profitPercent]);
 
   const chartData = useMemo(() => {
     if (localTransactions.length === 0) return [];
@@ -68,15 +91,6 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
     return filteredPoints;
   }, [localTransactions]);
 
-  const stats = useMemo(() => {
-     const invested = localTransactions.filter((t: Transaction) => t.type === 'Compra').reduce((a: number, b: Transaction) => a + b.total, 0) - 
-                      localTransactions.filter((t: Transaction) => t.type === 'Venda').reduce((a: number, b: Transaction) => a + b.total, 0);
-     const profit = totalValue - invested;
-     const profitPercent = invested > 0 ? (profit / invested) * 100 : 0;
-     
-     return { invested, profit, profitPercent };
-  }, [localTransactions, totalValue]);
-
   return (
     <div className="fixed inset-0 left-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
       <div className="w-full h-full flex flex-col relative z-10 animate-fade-in overflow-hidden">
@@ -123,43 +137,68 @@ export const EvolutionModal: React.FC<EvolutionModalProps> = ({ onClose, totalVa
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#1c1c1e] rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-8 border border-gray-200 dark:border-white/5 shadow-xl relative overflow-hidden min-h-[350px] mb-20 md:mb-0">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 px-2">
-                        <TrendingUp className="text-brand-500" />
-                        Curva de Aportes
-                    </h3>
-                    
-                    <div className="w-full h-[300px] md:h-[350px] -ml-2">
-                        {chartData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorEvol" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
-                                <Tooltip 
-                                    contentStyle={{ backgroundColor: '#1c1c1e', border: 'none', borderRadius: '12px', color: '#fff' }}
-                                    formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Investido Acumulado']}
-                                />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="value" 
-                                    stroke="var(--brand-primary)" 
-                                    strokeWidth={3} 
-                                    fill="url(#colorEvol)" 
-                                    animationDuration={2000}
-                                />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center opacity-40">
-                                <TrendingUp size={48} className="text-gray-400 mb-4" />
-                                <p className="text-gray-500 font-bold">Sem dados suficientes para o gráfico</p>
-                            </div>
-                        )}
+                <div className="flex flex-col lg:flex-row gap-6 mb-20 md:mb-0">
+                    {/* Chart */}
+                    <div className="flex-1 bg-white dark:bg-[#1c1c1e] rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-8 border border-gray-200 dark:border-white/5 shadow-xl relative overflow-hidden min-h-[350px]">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 px-2">
+                            <TrendingUp className="text-brand-500" />
+                            Curva de Aportes
+                        </h3>
+                        
+                        <div className="w-full h-[300px] md:h-[350px] -ml-2">
+                            {chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorEvol" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="var(--brand-primary)" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="var(--brand-primary)" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#1c1c1e', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                        formatter={(value: number) => [`R$ ${value.toLocaleString('pt-BR')}`, 'Investido Acumulado']}
+                                    />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="value" 
+                                        stroke="var(--brand-primary)" 
+                                        strokeWidth={3} 
+                                        fill="url(#colorEvol)" 
+                                        animationDuration={2000}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                            ) : (
+                                <div className="w-full h-full flex flex-col items-center justify-center opacity-40">
+                                    <TrendingUp size={48} className="text-gray-400 mb-4" />
+                                    <p className="text-gray-500 font-bold">Sem dados suficientes para o gráfico</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* AI Benchmark */}
+                    <div className="lg:w-80 bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-xl flex flex-col">
+                        <div className="flex items-center gap-2 mb-4">
+                             <Sparkles size={18} className="text-brand-500" />
+                             <h3 className="font-bold text-gray-900 dark:text-white">Comparativo de Mercado (IA)</h3>
+                        </div>
+                        <div className="bg-brand-50 dark:bg-brand-500/10 rounded-xl p-4 border border-brand-100 dark:border-brand-500/20 flex-1">
+                             {loadingAi ? (
+                                 <div className="flex gap-2 items-center text-xs text-gray-500">
+                                     <div className="w-2 h-2 bg-brand-500 rounded-full animate-bounce"></div>
+                                     Buscando CDI e Ibovespa...
+                                 </div>
+                             ) : (
+                                 <div className="prose prose-xs dark:prose-invert">
+                                     <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                         {aiBenchmark || "Sem comparação disponível."}
+                                     </p>
+                                 </div>
+                             )}
+                        </div>
                     </div>
                 </div>
 

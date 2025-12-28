@@ -9,26 +9,7 @@ const getApiKey = () => {
   return key;
 };
 
-// Helper para formatar fontes do Grounding (Google Search)
-const appendGroundingSources = (text: string, response: any): string => {
-    const candidate = response.candidates?.[0];
-    const chunks = candidate?.groundingMetadata?.groundingChunks;
-
-    if (!chunks || chunks.length === 0) return text;
-
-    const sources = chunks
-        .map((c: any, index: number) => {
-            if (c.web?.uri && c.web?.title) {
-                return `- [${c.web.title}](${c.web.uri})`;
-            }
-            return null;
-        })
-        .filter(Boolean);
-
-    if (sources.length === 0) return text;
-
-    return `${text}\n\n**Fontes Consultadas:**\n${sources.join('\n')}`;
-};
+const MODEL_NAME = 'gemini-2.5-flash';
 
 export const getFinancialAdvice = async (
   query: string, 
@@ -45,7 +26,6 @@ export const getFinancialAdvice = async (
     logApiRequest('gemini');
     const ai = new GoogleGenAI({ apiKey: apiKey });
     
-    // Constrói contexto rico para enviar em UMA única requisição
     const assetsContext = assets.map(a => {
       const profit = a.totalValue - a.totalCost;
       const profitPerc = a.totalCost > 0 ? (profit / a.totalCost) * 100 : 0;
@@ -67,32 +47,30 @@ export const getFinancialAdvice = async (
       ${assetsContext}
 
       DIRETRIZES:
-      1. Seja objetivo e direto.
+      1. Seja objetivo, técnico e direto.
       2. Use Markdown (negrito) para destacar números e tickers.
-      3. Se a pergunta for sobre um fato relevante ou notícia recente que não está nos dados acima, USE A BUSCA DO GOOGLE (ferramenta ativa) para responder.
+      3. NÃO forneça links, URLs ou citações de fontes externas.
+      4. Foque na análise dos dados fornecidos e fatos concretos de mercado.
     `;
 
-    // Uso explícito do Gemini 2.5 Flash Preview
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview',
+      model: MODEL_NAME,
       contents: query,
       config: {
         systemInstruction,
         temperature: 0.7,
-        tools: [{ googleSearch: {} }] // Ativa Grounding com Google Search
+        tools: [{ googleSearch: {} }] // Mantido para precisão de dados, mas links ocultos no output
       }
     });
 
-    const text = response.text || "Não consegui gerar uma resposta.";
-    return appendGroundingSources(text, response);
+    return response.text || "Não consegui gerar uma resposta.";
 
   } catch (error) {
     console.error("[Gemini Advisor] Erro:", error);
-    return "Ocorreu um erro ao conectar com a Inteligência Artificial (Gemini 2.5).";
+    return "Ocorreu um erro ao conectar com a Inteligência Artificial.";
   }
 };
 
-// Nova função para analisar um ativo específico no Modal
 export const analyzeAsset = async (asset: Asset): Promise<string> => {
     try {
         const apiKey = getApiKey();
@@ -101,37 +79,34 @@ export const analyzeAsset = async (asset: Asset): Promise<string> => {
         logApiRequest('gemini');
         const ai = new GoogleGenAI({ apiKey });
 
-        // Prompt enriquecido para incentivar o uso da ferramenta de busca
-        const prompt = `Faça uma análise rápida e técnica sobre o ativo ${asset.ticker} (${asset.companyName}).
-        Busque notícias recentes ou fatos relevantes na web para complementar.
+        // Prompt ajustado para remover pedido de notícias e focar em valuation/técnica
+        const prompt = `Faça uma análise técnica concisa sobre o ativo ${asset.ticker} (${asset.companyName}).
         
         Meus dados: Tenho ${asset.quantity} cotas, Preço Médio R$${asset.averagePrice.toFixed(2)}, Preço Atual R$${asset.currentPrice.toFixed(2)}.
         O DY é ${asset.dy12m}% e P/VP é ${asset.pvp}.
         
         Diga se:
-        1. O ativo está descontado (baseado no P/VP).
-        2. Se estou no lucro ou prejuízo.
-        3. Uma breve opinião sobre o setor (${asset.segment}) e notícias recentes.
-        Seja sucinto (max 100 palavras).`;
+        1. O ativo está descontado (valuation baseada em P/VP e pares).
+        2. Se a rentabilidade da minha posição é saudável.
+        3. Uma opinião técnica sobre o setor (${asset.segment}).
+        
+        Não inclua links ou notícias. Seja analítico e sucinto (max 100 palavras).`;
 
-        // Uso explícito do Gemini 2.5 Flash Preview
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-preview',
+            model: MODEL_NAME,
             contents: prompt,
             config: {
-                tools: [{ googleSearch: {} }] // Ativa Grounding
+                tools: [{ googleSearch: {} }]
             }
         });
 
-        const text = response.text || "Sem análise disponível.";
-        return appendGroundingSources(text, response);
+        return response.text || "Sem análise disponível.";
 
     } catch (error) {
         return "Erro ao analisar ativo via Gemini.";
     }
 };
 
-// Nova função para analisar a estrutura da carteira
 export const analyzePortfolioStruct = async (portfolio: PortfolioItem[], totalValue: number): Promise<string> => {
     try {
         const apiKey = getApiKey();
@@ -140,27 +115,141 @@ export const analyzePortfolioStruct = async (portfolio: PortfolioItem[], totalVa
         logApiRequest('gemini');
         const ai = new GoogleGenAI({ apiKey });
 
-        const prompt = `Analise a diversificação desta carteira de R$ ${totalValue.toLocaleString('pt-BR')}:
+        const prompt = `Analise a diversificação técnica desta carteira de R$ ${totalValue.toLocaleString('pt-BR')}:
         ${portfolio.map(p => `${p.name}: ${p.percentage}%`).join(', ')}.
         
-        Aponte:
-        1. Riscos de concentração.
-        2. Sugestão de rebalanceamento rápido considerando o cenário macroeconômico atual (faça uma busca breve se necessário).
-        Seja direto.`;
+        Aponte riscos de concentração matemática e sugestão de rebalanceamento técnico.
+        Não cite fontes externas ou links. Seja direto.`;
 
-        // Uso explícito do Gemini 2.5 Flash Preview
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-preview',
+            model: MODEL_NAME,
             contents: prompt,
             config: {
-                tools: [{ googleSearch: {} }] // Ativa Grounding
+                tools: [{ googleSearch: {} }]
             }
         });
 
-        const text = response.text || "Sem análise disponível.";
-        return appendGroundingSources(text, response);
+        return response.text || "Sem análise disponível.";
 
     } catch (error) {
         return "Erro ao analisar carteira.";
+    }
+};
+
+export const getInflationAnalysis = async (userYield: number): Promise<string> => {
+    try {
+        const apiKey = getApiKey();
+        if (!apiKey) return "⚠️ Sem chave API.";
+
+        logApiRequest('gemini');
+        const ai = new GoogleGenAI({ apiKey });
+
+        const prompt = `
+        1. Obtenha o valor exato do IPCA acumulado 12 meses e o CDI atual.
+        2. Compare matematicamente com minha rentabilidade de ${userYield.toFixed(2)}%.
+        3. Conclua se houve ganho real (acima da inflação) ou perda de poder de compra.
+        Retorne apenas os números e a conclusão técnica. Sem links.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }]
+            }
+        });
+
+        return response.text || "Sem dados de inflação.";
+    } catch (error) {
+        return "Erro ao buscar dados de inflação.";
+    }
+};
+
+export const getIncomeAnalysis = async (topPayers: {ticker: string, share: number}[]): Promise<string> => {
+    try {
+        const apiKey = getApiKey();
+        if (!apiKey) return "⚠️ Sem chave API.";
+
+        logApiRequest('gemini');
+        const ai = new GoogleGenAI({ apiKey });
+
+        const payersStr = topPayers.map(p => p.ticker).join(', ');
+        
+        const prompt = `
+        Analise a sustentabilidade do Payout e fluxo de caixa destes ativos: ${payersStr}.
+        Baseado nos últimos balanços, há risco operacional para os proventos?
+        Resuma em 1 parágrafo técnico. Sem notícias ou links.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }]
+            }
+        });
+
+        return response.text || "Sem análise de renda.";
+    } catch (error) {
+        return "Erro ao analisar proventos.";
+    }
+};
+
+export const getUpcomingDividends = async (tickers: string[]): Promise<string> => {
+    try {
+        const apiKey = getApiKey();
+        if (!apiKey) return "⚠️ Sem chave API.";
+
+        logApiRequest('gemini');
+        const ai = new GoogleGenAI({ apiKey });
+
+        const tickerStr = tickers.slice(0, 10).join(', ');
+        
+        // Foca apenas em extrair dados (Data Com, Valor, Pagamento) sem texto jornalístico
+        const prompt = `
+        Verifique base de dados oficial para "dividendos anunciados e não pagos" destes ativos: ${tickerStr}.
+        Liste estritamente: Ticker | Valor | Data Pagamento.
+        Se não houver anúncios pendentes, diga "Sem proventos futuros anunciados".
+        Não inclua links.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }]
+            }
+        });
+
+        return response.text || "Sem previsões encontradas.";
+    } catch (error) {
+        return "Erro ao buscar dividendos futuros.";
+    }
+};
+
+export const getMarketBenchmarks = async (userPerformance: number): Promise<string> => {
+    try {
+        const apiKey = getApiKey();
+        if (!apiKey) return "⚠️ Sem chave API.";
+
+        logApiRequest('gemini');
+        const ai = new GoogleGenAI({ apiKey });
+
+        const prompt = `
+        Compare tecnicamente a rentabilidade de ${userPerformance.toFixed(2)}% com o acumulado 12 meses do Ibovespa e CDI.
+        Apenas mostre os valores comparativos e se a performance é Alpha positivo ou negativo. Sem links.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                tools: [{ googleSearch: {} }]
+            }
+        });
+
+        return response.text || "Sem dados de mercado.";
+    } catch (error) {
+        return "Erro ao comparar benchmarks.";
     }
 };

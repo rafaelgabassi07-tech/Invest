@@ -1,13 +1,17 @@
 
-import React, { useMemo } from 'react';
-import { ChevronLeft, AlertCircle, BarChart3, X, TrendingUp, TrendingDown } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { ChevronLeft, AlertCircle, BarChart3, X, TrendingUp, TrendingDown, Sparkles } from 'lucide-react';
 import { AreaChart, Area, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getInflationAnalysis } from '../services/geminiService';
 
 interface RealPowerModalProps {
   onClose: () => void;
 }
 
 export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
   // Simulação de dados para funcionalidade imediata
   const simulationData = useMemo(() => {
       const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -37,6 +41,17 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
   const accumulatedNominal = lastPoint.wallet - 100;
   const accumulatedInflation = lastPoint.inflation - 100;
   const isPositive = accumulatedReal >= 0;
+
+  useEffect(() => {
+    const fetchAnalysis = async () => {
+        setLoadingAi(true);
+        // Passamos a rentabilidade nominal acumulada para a IA analisar contra o IPCA real
+        const text = await getInflationAnalysis(accumulatedNominal);
+        setAiAnalysis(text);
+        setLoadingAi(false);
+    };
+    fetchAnalysis();
+  }, [accumulatedNominal]);
 
   return (
     <div className="fixed inset-0 left-0 md:left-72 z-[100] flex items-center justify-center pointer-events-auto bg-gray-50 dark:bg-[#0d0d0d]">
@@ -73,7 +88,7 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                         
                         <div className="relative z-10 text-center py-6 md:py-10">
-                            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Ganho Real Acumulado (12m)</p>
+                            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Ganho Real Estimado (12m)</p>
                             <h2 className={`text-6xl lg:text-8xl font-bold tracking-tighter mb-4 md:mb-6 ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {isPositive ? '+' : ''}{accumulatedReal.toFixed(2)}%
                             </h2>
@@ -91,23 +106,34 @@ export const RealPowerModal: React.FC<RealPowerModalProps> = ({ onClose }) => {
                                 <p className="text-indigo-500 font-bold text-xl md:text-3xl">+{accumulatedNominal.toFixed(2)}%</p>
                             </div>
                             <div className="bg-gray-50 dark:bg-[#2c2c2e]/50 rounded-3xl p-4 md:p-6 border border-gray-100 dark:border-white/5 text-center">
-                                <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase mb-1 md:mb-2">IPCA</p>
+                                <p className="text-gray-400 text-[9px] md:text-[10px] font-bold uppercase mb-1 md:mb-2">IPCA (Est.)</p>
                                 <p className="text-amber-500 font-bold text-xl md:text-3xl">-{accumulatedInflation.toFixed(2)}%</p>
                             </div>
                         </div>
                     </div>
-
-                    <div className="flex items-start gap-4 bg-brand-500/5 border border-brand-500/10 p-6 rounded-[2rem]">
-                        <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
-                            <AlertCircle size={20} className="text-brand-500" />
+                    
+                    {/* Gemini AI Analysis Block */}
+                    <div className="bg-white dark:bg-[#1c1c1e] p-6 rounded-[2rem] border border-gray-200 dark:border-white/5 shadow-lg relative overflow-hidden">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Sparkles size={16} className="text-brand-500" />
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">Análise Macro Gemini 2.5</h4>
                         </div>
-                        <div>
-                            <h4 className="text-brand-500 font-bold text-sm mb-1">Entenda o Ganho Real</h4>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">
-                                O ganho real desconta a inflação do seu retorno. Se sua carteira rende 10% e a inflação é 4%, seu ganho real é de aproximadamente 6%.
-                            </p>
-                        </div>
+                        {loadingAi ? (
+                            <div className="animate-pulse flex space-x-4">
+                                <div className="flex-1 space-y-2 py-1">
+                                    <div className="h-2 bg-gray-200 dark:bg-white/10 rounded"></div>
+                                    <div className="h-2 bg-gray-200 dark:bg-white/10 rounded w-3/4"></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="prose prose-xs dark:prose-invert">
+                                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap">
+                                    {aiAnalysis || "Iniciando busca por dados de inflação..."}
+                                </p>
+                            </div>
+                        )}
                     </div>
+
                 </div>
 
                 {/* Right Column: Chart */}
