@@ -1,16 +1,20 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { FinancialSummary } from '../types';
-import { TrendingUp, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, RefreshCw } from 'lucide-react';
 
-export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
+// Interface estendida para suportar a flag de sincronização
+interface ExtendedSummary extends FinancialSummary {
+    isSyncing?: boolean;
+}
+
+export const SummaryCard: React.FC<{ data: ExtendedSummary }> = ({ data }) => {
   const [displayBalance, setDisplayBalance] = useState(data.totalBalance);
   const lastValue = useRef(data.totalBalance);
 
   useEffect(() => {
     const diff = Math.abs(data.totalBalance - lastValue.current);
     
-    // Se a diferença for muito pequena ou zero, atualiza direto sem animação
     if (diff < 0.01) {
       setDisplayBalance(data.totalBalance);
       lastValue.current = data.totalBalance;
@@ -19,17 +23,14 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
 
     let startTimestamp: number | null = null;
     let animationFrameId: number;
-    const duration = 1000; // Duração um pouco maior para suavidade
+    const duration = 1000;
     const startValue = lastValue.current;
     const endValue = data.totalBalance;
 
     const step = (timestamp: number) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      
-      // Easing function (easeOutQuart) para movimento mais natural
       const ease = 1 - Math.pow(1 - progress, 4);
-      
       const current = startValue + (endValue - startValue) * ease;
       setDisplayBalance(current);
 
@@ -37,7 +38,7 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
         animationFrameId = window.requestAnimationFrame(step);
       } else {
         lastValue.current = endValue;
-        setDisplayBalance(endValue); // Garante valor final exato
+        setDisplayBalance(endValue);
       }
     };
 
@@ -53,11 +54,18 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
       <div className="flex justify-between items-center mb-8 relative z-10">
         <h2 className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 tracking-[0.2em] uppercase flex items-center gap-2">
             Patrimônio Total
-            <span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse shadow-[0_0_8px_var(--brand-primary)]"></span>
+            <span className={`w-1.5 h-1.5 rounded-full animate-pulse shadow-[0_0_8px] ${data.isSyncing ? 'bg-amber-500 shadow-amber-500' : 'bg-brand-primary shadow-brand-primary'}`}></span>
         </h2>
-        <span className="px-3 py-1 bg-brand-highlight dark:bg-brand-primary/10 text-brand-primary text-[9px] font-bold rounded-full border border-brand-primary/20 shadow-sm uppercase tracking-tighter">
-          Ao Vivo
-        </span>
+        
+        {data.isSyncing ? (
+            <span className="px-3 py-1 bg-amber-500/10 text-amber-500 text-[9px] font-bold rounded-full border border-amber-500/20 shadow-sm uppercase tracking-tighter flex items-center gap-1.5 animate-pulse">
+               <RefreshCw size={10} className="animate-spin" /> Sincronizando
+            </span>
+        ) : (
+            <span className="px-3 py-1 bg-brand-highlight dark:bg-brand-primary/10 text-brand-primary text-[9px] font-bold rounded-full border border-brand-primary/20 shadow-sm uppercase tracking-tighter transition-all">
+              Ao Vivo
+            </span>
+        )}
       </div>
 
       <div className="mb-10 relative z-10">
@@ -109,4 +117,3 @@ export const SummaryCard: React.FC<{ data: FinancialSummary }> = ({ data }) => {
     </div>
   );
 };
-    

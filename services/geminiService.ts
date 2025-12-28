@@ -4,12 +4,15 @@ import { FinancialSummary, PortfolioItem, Asset } from "../types";
 import { logApiRequest } from './telemetryService.ts';
 
 const getApiKey = () => {
+  // Tenta obter do process.env injetado pelo Vite
+  // @ts-ignore
   const key = process.env.API_KEY;
   if (!key || key === 'undefined' || key.trim() === '') return null;
   return key;
 };
 
-const MODEL_NAME = 'gemini-2.5-flash';
+// Utilizando a versão Flash estável que suporta tools (Google Search)
+const MODEL_NAME = 'gemini-2.0-flash';
 
 export const getFinancialAdvice = async (
   query: string, 
@@ -20,7 +23,7 @@ export const getFinancialAdvice = async (
   try {
     const apiKey = getApiKey();
     if (!apiKey) {
-        return "⚠️ A chave de API do Gemini não foi detectada. Verifique suas variáveis de ambiente (API_KEY).";
+        return "⚠️ **Configuração Necessária**: A chave de API do Gemini não foi detectada. Por favor, configure a variável `API_KEY` no seu ambiente para ativar o assistente.";
     }
 
     logApiRequest('gemini');
@@ -29,28 +32,26 @@ export const getFinancialAdvice = async (
     const assetsContext = assets.map(a => {
       const profit = a.totalValue - a.totalCost;
       const profitPerc = a.totalCost > 0 ? (profit / a.totalCost) * 100 : 0;
-      return `- ${a.ticker} (${a.assetType}): ${a.quantity} cotas. PM: R$${a.averagePrice.toFixed(2)} | Atual: R$${a.currentPrice.toFixed(2)}. Rentab: ${profitPerc.toFixed(1)}%. Setor: ${a.segment}. DY: ${a.dy12m}%. P/VP: ${a.pvp}`;
+      return `- **${a.ticker}** (${a.assetType}): ${a.quantity} cotas. PM: R$${a.averagePrice.toFixed(2)} | Atual: R$${a.currentPrice.toFixed(2)}. Rentab: ${profitPerc.toFixed(1)}%. Setor: ${a.segment}. DY: ${a.dy12m}%. P/VP: ${a.pvp}`;
     }).join('\n');
 
     const portfolioContext = portfolio.map(p => `${p.name}: ${p.percentage}%`).join(', ');
 
     const systemInstruction = `
-      Você é o "Invest AI", um consultor financeiro sênior pessoal e extremamente inteligente, especializado no mercado brasileiro (B3).
+      Você é o "Invest AI", um consultor financeiro sênior especializado na B3 (Brasil).
       
-      DADOS DO USUÁRIO AGORA (${new Date().toLocaleDateString('pt-BR')}):
-      - Patrimônio Total: R$ ${summary.totalBalance.toLocaleString('pt-BR')}
-      - Total Investido: R$ ${summary.totalInvested.toLocaleString('pt-BR')}
-      - Lucro/Prejuízo: R$ ${summary.capitalGain.toLocaleString('pt-BR')}
-      - Alocação Atual: ${portfolioContext}
+      CONTEXTO DO INVESTIDOR:
+      - Patrimônio: R$ ${summary.totalBalance.toLocaleString('pt-BR')}
+      - Resultado: R$ ${summary.capitalGain.toLocaleString('pt-BR')}
+      - Alocação: ${portfolioContext}
       
-      DETALHE DOS ATIVOS:
+      CARTEIRA DETALHADA:
       ${assetsContext}
 
-      DIRETRIZES:
-      1. Seja objetivo, técnico e direto.
-      2. Use Markdown (negrito) para destacar números e tickers.
-      3. NÃO forneça links, URLs ou citações de fontes externas.
-      4. Foque na análise dos dados fornecidos e fatos concretos de mercado.
+      REGRAS:
+      1. Use Markdown.
+      2. Se precisar de dados atuais (Selic, IPCA, notícias), use a tool googleSearch.
+      3. Seja direto e técnico.
     `;
 
     const response = await ai.models.generateContent({
@@ -59,38 +60,43 @@ export const getFinancialAdvice = async (
       config: {
         systemInstruction,
         temperature: 0.7,
-        tools: [{ googleSearch: {} }] // Mantido para precisão de dados, mas links ocultos no output
+        tools: [{ googleSearch: {} }]
       }
     });
 
-    return response.text || "Não consegui gerar uma resposta.";
+    return response.text || "Não consegui formular uma resposta no momento.";
 
   } catch (error) {
     console.error("[Gemini Advisor] Erro:", error);
-    return "Ocorreu um erro ao conectar com a Inteligência Artificial.";
+    return "Ocorreu um erro ao conectar com a Inteligência Artificial. Verifique sua conexão ou chave de API.";
   }
 };
 
 export const analyzeAsset = async (asset: Asset): Promise<string> => {
     try {
         const apiKey = getApiKey();
-        if (!apiKey) return "⚠️ Configure a API_KEY para receber análises de IA sobre este ativo.";
+        if (!apiKey) return "⚠️ Configure a API_KEY para receber análises.";
 
         logApiRequest('gemini');
         const ai = new GoogleGenAI({ apiKey });
 
-        // Prompt ajustado para remover pedido de notícias e focar em valuation/técnica
-        const prompt = `Faça uma análise técnica concisa sobre o ativo ${asset.ticker} (${asset.companyName}).
+        // Prompt reforçado para garantir análise técnica
+        const prompt = `
+        Realize uma análise fundamentalista flash sobre o ativo: ${asset.ticker} (${asset.companyName}).
         
-        Meus dados: Tenho ${asset.quantity} cotas, Preço Médio R$${asset.averagePrice.toFixed(2)}, Preço Atual R$${asset.currentPrice.toFixed(2)}.
-        O DY é ${asset.dy12m}% e P/VP é ${asset.pvp}.
+        MEUS DADOS:
+        - Preço Médio: R$ ${asset.averagePrice.toFixed(2)}
+        - Preço Atual: R$ ${asset.currentPrice.toFixed(2)}
+        - DY (12m): ${asset.dy12m}%
+        - P/VP: ${asset.pvp}
         
-        Diga se:
-        1. O ativo está descontado (valuation baseada em P/VP e pares).
-        2. Se a rentabilidade da minha posição é saudável.
-        3. Uma opinião técnica sobre o setor (${asset.segment}).
+        SOLICITAÇÃO:
+        1. O P/VP atual indica desconto ou ágio? Compare com a média do setor se possível.
+        2. Há riscos relevantes no curto prazo (use o Google Search para notícias recentes)?
+        3. Veredito rápido: Manter, Comprar mais ou Atenção? (Baseado em Valuation)
         
-        Não inclua links ou notícias. Seja analítico e sucinto (max 100 palavras).`;
+        Seja sucinto (máximo 3 parágrafos curtos).
+        `;
 
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
@@ -103,23 +109,30 @@ export const analyzeAsset = async (asset: Asset): Promise<string> => {
         return response.text || "Sem análise disponível.";
 
     } catch (error) {
-        return "Erro ao analisar ativo via Gemini.";
+        return "Erro ao analisar ativo. Tente novamente mais tarde.";
     }
 };
 
-export const analyzePortfolioStruct = async (portfolio: PortfolioItem[], totalValue: number): Promise<string> => {
+export const analyzePortfolioStruct = async (portfolio: {name: string, percentage: number}[], totalValue: number): Promise<string> => {
     try {
         const apiKey = getApiKey();
-        if (!apiKey) return "⚠️ Configure a API_KEY para receber insights de alocação.";
+        if (!apiKey) return "⚠️ Configure a API_KEY para insights.";
 
         logApiRequest('gemini');
         const ai = new GoogleGenAI({ apiKey });
 
-        const prompt = `Analise a diversificação técnica desta carteira de R$ ${totalValue.toLocaleString('pt-BR')}:
-        ${portfolio.map(p => `${p.name}: ${p.percentage}%`).join(', ')}.
+        const prompt = `
+        Analise a estrutura desta carteira de investimentos de R$ ${totalValue.toLocaleString('pt-BR')}:
         
-        Aponte riscos de concentração matemática e sugestão de rebalanceamento técnico.
-        Não cite fontes externas ou links. Seja direto.`;
+        ALOCAÇÃO:
+        ${portfolio.map(p => `- ${p.name}: ${p.percentage}%`).join('\n')}
+        
+        Dê um feedback sobre:
+        1. Diversificação (está concentrada demais?).
+        2. Sugestão genérica de rebalanceamento para um perfil moderado/arrojado.
+        
+        Resposta curta e direta em tópicos.
+        `;
 
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
@@ -132,11 +145,11 @@ export const analyzePortfolioStruct = async (portfolio: PortfolioItem[], totalVa
         return response.text || "Sem análise disponível.";
 
     } catch (error) {
-        return "Erro ao analisar carteira.";
+        return "Erro na análise de portfólio.";
     }
 };
 
-export const getInflationAnalysis = async (userYield: number): Promise<string> => {
+export const getInflationAnalysis = async (accumulatedNominal: number): Promise<string> => {
     try {
         const apiKey = getApiKey();
         if (!apiKey) return "⚠️ Sem chave API.";
@@ -145,10 +158,12 @@ export const getInflationAnalysis = async (userYield: number): Promise<string> =
         const ai = new GoogleGenAI({ apiKey });
 
         const prompt = `
-        1. Obtenha o valor exato do IPCA acumulado 12 meses e o CDI atual.
-        2. Compare matematicamente com minha rentabilidade de ${userYield.toFixed(2)}%.
-        3. Conclua se houve ganho real (acima da inflação) ou perda de poder de compra.
-        Retorne apenas os números e a conclusão técnica. Sem links.
+        Use o Google Search para encontrar o IPCA acumulado dos últimos 12 meses no Brasil.
+        
+        Minha carteira rendeu nominalmente: ${accumulatedNominal.toFixed(2)}% nos últimos 12 meses.
+        
+        Calcule o ganho (ou perda) real descontando a inflação encontrada.
+        Explique brevemente o impacto disso no poder de compra.
         `;
 
         const response = await ai.models.generateContent({
@@ -173,12 +188,13 @@ export const getIncomeAnalysis = async (topPayers: {ticker: string, share: numbe
         logApiRequest('gemini');
         const ai = new GoogleGenAI({ apiKey });
 
-        const payersStr = topPayers.map(p => p.ticker).join(', ');
+        const payersStr = topPayers.map(p => `${p.ticker} (${p.share.toFixed(1)}% da renda)`).join(', ');
         
         const prompt = `
-        Analise a sustentabilidade do Payout e fluxo de caixa destes ativos: ${payersStr}.
-        Baseado nos últimos balanços, há risco operacional para os proventos?
-        Resuma em 1 parágrafo técnico. Sem notícias ou links.
+        Analise a sustentabilidade dos dividendos destes ativos que compõem minha renda: ${payersStr}.
+        
+        Verifique (Google Search) se alguma dessas empresas cortou dividendos recentemente ou tem payout insustentável.
+        Resuma em 1 parágrafo de alerta ou confirmação de segurança.
         `;
 
         const response = await ai.models.generateContent({
@@ -203,14 +219,15 @@ export const getUpcomingDividends = async (tickers: string[]): Promise<string> =
         logApiRequest('gemini');
         const ai = new GoogleGenAI({ apiKey });
 
-        const tickerStr = tickers.slice(0, 10).join(', ');
+        const tickerStr = tickers.slice(0, 15).join(', ');
         
-        // Foca apenas em extrair dados (Data Com, Valor, Pagamento) sem texto jornalístico
         const prompt = `
-        Verifique base de dados oficial para "dividendos anunciados e não pagos" destes ativos: ${tickerStr}.
-        Liste estritamente: Ticker | Valor | Data Pagamento.
-        Se não houver anúncios pendentes, diga "Sem proventos futuros anunciados".
-        Não inclua links.
+        Use o Google Search para encontrar "Data Com" e "Data de Pagamento" de dividendos ANUNCIADOS recentemente para: ${tickerStr}.
+        
+        Liste apenas os que tem pagamento futuro confirmado.
+        Formato: [Ticker] - R$ [Valor] (Pagamento: [Data])
+        
+        Se não encontrar nada relevante, diga "Sem anúncios recentes encontrados na base pública".
         `;
 
         const response = await ai.models.generateContent({
@@ -236,8 +253,11 @@ export const getMarketBenchmarks = async (userPerformance: number): Promise<stri
         const ai = new GoogleGenAI({ apiKey });
 
         const prompt = `
-        Compare tecnicamente a rentabilidade de ${userPerformance.toFixed(2)}% com o acumulado 12 meses do Ibovespa e CDI.
-        Apenas mostre os valores comparativos e se a performance é Alpha positivo ou negativo. Sem links.
+        Busque o rendimento acumulado 12 meses do IBOVESPA e do CDI hoje.
+        
+        Minha performance: ${userPerformance.toFixed(2)}%.
+        
+        Crie uma tabela comparativa simples e diga se bati os benchmarks.
         `;
 
         const response = await ai.models.generateContent({

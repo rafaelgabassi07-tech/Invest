@@ -16,6 +16,7 @@ import { SettingsView } from './components/SettingsView.tsx';
 import { NotificationsView } from './components/NotificationsView.tsx';
 import { AIAdvisor } from './components/AIAdvisor.tsx';
 import { AddTransactionModal } from './components/AddTransactionModal.tsx';
+import { SystemUpdateOverlay } from './components/SystemUpdateOverlay.tsx'; 
 import { Asset, Transaction, AppTheme, AppNotification } from './types.ts';
 import { fetchTickersData } from './services/brapiService.ts';
 import { AVAILABLE_THEMES } from './services/themeService.ts';
@@ -27,22 +28,45 @@ const RealPowerModal = lazy(() => import('./components/RealPowerModal.tsx').then
 const EvolutionModal = lazy(() => import('./components/EvolutionModal.tsx').then(m => ({ default: m.EvolutionModal })));
 const PortfolioModal = lazy(() => import('./components/PortfolioModal.tsx').then(m => ({ default: m.PortfolioModal })));
 
-const INITIAL_ASSETS: Asset[] = [];
+const INITIAL_ASSETS: Asset[] = [
+    {
+        id: 'PETR4', ticker: 'PETR4', shortName: 'Petrobras', companyName: 'Petroleo Brasileiro S.A. Petrobras',
+        assetType: 'Ação', segment: 'Petróleo e Gás', allocationType: 'Brasil',
+        quantity: 100, currentPrice: 38.50, totalValue: 3850, dailyChange: 1.5,
+        averagePrice: 32.00, totalCost: 3200, lastDividend: 1.20, lastDividendDate: '20/11/2024',
+        dy12m: 18.5, color: '#f59e0b', pvp: 0.95, vp: 40.00, liquidity: 'High', netWorth: '500B'
+    },
+    {
+        id: 'VALE3', ticker: 'VALE3', shortName: 'Vale', companyName: 'Vale S.A.',
+        assetType: 'Ação', segment: 'Mineração', allocationType: 'Brasil',
+        quantity: 50, currentPrice: 62.10, totalValue: 3105, dailyChange: -0.8,
+        averagePrice: 65.00, totalCost: 3250, lastDividend: 2.10, lastDividendDate: '01/09/2024',
+        dy12m: 8.2, color: '#10b981', pvp: 1.2, vp: 50.00, liquidity: 'High', netWorth: '300B'
+    },
+    {
+        id: 'MXRF11', ticker: 'MXRF11', shortName: 'Maxi Renda', companyName: 'Maxi Renda FII',
+        assetType: 'FII', segment: 'Papel', allocationType: 'FII',
+        quantity: 200, currentPrice: 10.50, totalValue: 2100, dailyChange: 0.2,
+        averagePrice: 10.10, totalCost: 2020, lastDividend: 0.11, lastDividendDate: '15/12/2024',
+        dy12m: 12.5, color: '#3b82f6', pvp: 1.01, vp: 10.40, liquidity: 'High', netWorth: '2.5B'
+    }
+];
 
-// Paleta de cores para o gráfico da dashboard
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'];
 
 const App: React.FC = () => {
   const [isAppLoading, setIsAppLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Alterado de booleano para string para controlar mensagens de status
+  const [refreshStatus, setRefreshStatus] = useState<string>(''); 
+  
   const [activeTab, setActiveTab] = useState('dashboard');
   const [previousTab, setPreviousTab] = useState('dashboard'); 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   
-  // Notification State
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   
@@ -51,14 +75,13 @@ const App: React.FC = () => {
       const saved = localStorage.getItem('invest_assets');
       if (!saved) return INITIAL_ASSETS;
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? (parsed as Asset[]) : INITIAL_ASSETS;
+      return Array.isArray(parsed) && parsed.length > 0 ? (parsed as Asset[]) : INITIAL_ASSETS;
     } catch (e) { return INITIAL_ASSETS; }
   });
 
   const assetsRef = useRef<Asset[]>(assets);
   const isRefreshingRef = useRef(false);
 
-  // Mantém ref atualizada para uso dentro do refreshMarketData
   useEffect(() => { assetsRef.current = assets; }, [assets]);
 
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
@@ -78,32 +101,21 @@ const App: React.FC = () => {
     } catch (e) { return AVAILABLE_THEMES[0]; }
   });
 
-  // SISTEMA DE ATUALIZAÇÃO: Escuta evento do Service Worker
   useEffect(() => {
     const handleUpdateAvailable = () => {
-        setNotifications(prev => {
-            if (prev.some(n => n.type === 'system')) return prev; 
-            
-            const newNotif: AppNotification = {
-                id: 999999, 
-                title: "Atualização Disponível",
-                message: "Uma nova versão do app está pronta. Toque para instalar.",
-                time: "Agora",
-                type: "system",
-                read: false,
-                group: "Hoje",
-                actionLabel: "Instalar Agora 🚀",
-                onAction: () => {
-                    if (window.updateApp) window.updateApp();
-                }
-            };
-            return [newNotif, ...prev];
-        });
+        setUpdateAvailable(true);
     };
-
     window.addEventListener('invest-update-available', handleUpdateAvailable);
     return () => window.removeEventListener('invest-update-available', handleUpdateAvailable);
   }, []);
+
+  const handleInstallUpdate = () => {
+     if (window.updateApp) {
+         window.updateApp();
+     } else {
+         window.location.reload();
+     }
+  };
 
   useEffect(() => {
     localStorage.setItem('invest_assets', JSON.stringify(assets));
@@ -116,21 +128,38 @@ const App: React.FC = () => {
   const refreshMarketData = useCallback(async (force = false) => {
     const currentAssets = assetsRef.current;
     if (currentAssets.length === 0) {
-      setIsRefreshing(false);
+      setRefreshStatus('');
       return;
     }
-    
     if (isRefreshingRef.current && !force) return;
     
     isRefreshingRef.current = true;
-    setIsRefreshing(true);
+    
+    // UX: Sequência de mensagens para não causar ansiedade
+    const steps = [
+        { msg: 'Conectando à B3...', delay: 0 },
+        { msg: 'Atualizando Cotações...', delay: 800 },
+        { msg: 'Calculando Patrimônio...', delay: 1600 }
+    ];
+
+    let currentStepIndex = 0;
+    setRefreshStatus(steps[0].msg);
+
+    // Timer para garantir que o usuário leia as mensagens (UX pacing)
+    const interval = setInterval(() => {
+        currentStepIndex++;
+        if (currentStepIndex < steps.length) {
+            setRefreshStatus(steps[currentStepIndex].msg);
+        }
+    }, 800);
 
     try {
-        const tickers: string[] = Array.from(new Set(currentAssets.map(a => a.ticker))); // Unique tickers
-        console.log(`[App] Atualizando ${tickers.length} ativos...`);
-        
+        const tickers: string[] = Array.from(new Set(currentAssets.map(a => a.ticker))); 
         const liveData = await fetchTickersData(tickers);
         
+        clearInterval(interval); // Para o timer de mensagens assim que a API responder
+        setRefreshStatus('Finalizando...');
+
         if (liveData && liveData.length > 0) {
           setAssets(prev => prev.map(asset => {
               const live = liveData.find((l: any) => l.symbol === asset.ticker);
@@ -139,8 +168,6 @@ const App: React.FC = () => {
               let lastDiv = asset.lastDividend;
               let lastDivDate = asset.lastDividendDate;
               
-              // Atualiza dividendos se disponíveis na API
-              // A BRAPI com fundamental=true pode retornar dividendsData
               if (live.dividendsData?.cashDividends?.length > 0) {
                   const sortedDivs = [...live.dividendsData.cashDividends].sort((a: any, b: any) => 
                       new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
@@ -158,36 +185,40 @@ const App: React.FC = () => {
                 totalValue: (live.regularMarketPrice || asset.currentPrice) * asset.quantity,
                 dailyChange: live.regularMarketChangePercent || 0,
                 companyName: live.longName || asset.companyName,
-                image: live.logourl || asset.image, // Captura o Logo
+                image: live.logourl || asset.image,
                 pvp: live.priceToBook || asset.pvp || 1,
                 pl: live.priceEarnings || asset.pl || 0,
                 lastDividend: lastDiv,
                 lastDividendDate: lastDivDate,
                 dy12m: live.dividendYield || asset.dy12m || 0,
                 liquidity: live.regularMarketVolume ? live.regularMarketVolume.toLocaleString('pt-BR') : asset.liquidity,
-                // Mapeia o setor vindo da API para o segmento, fallback para o que já existia
                 segment: live.sector || asset.segment 
               };
           }));
         }
+        
+        // Mensagem de sucesso breve
+        setRefreshStatus('Tudo Atualizado!');
+        setTimeout(() => setRefreshStatus(''), 1500);
+
     } catch (err) {
         console.error("[App] Erro de mercado:", err);
+        setRefreshStatus('Erro ao atualizar');
+        setTimeout(() => setRefreshStatus(''), 2000);
     } finally {
         isRefreshingRef.current = false;
-        setIsRefreshing(false);
+        clearInterval(interval);
     }
   }, []); 
 
   const handleImportData = useCallback((newData: { assets: Asset[], transactions: Transaction[] }) => {
     if (newData.assets) setAssets(newData.assets);
     if (newData.transactions) setTransactions(newData.transactions);
-    // Força atualização após importação
     setTimeout(() => refreshMarketData(true), 500);
   }, [refreshMarketData]);
 
   const recalculateAssetFromHistory = (ticker: string, allTransactions: Transaction[], currentAssets: Asset[]) => {
     const assetTransactions = allTransactions.filter(t => t.ticker === ticker);
-    // Ordenar transações por data
     assetTransactions.sort((a, b) => {
         const parseDate = (d: string) => {
             const months: {[k:string]:number} = {'Jan':0,'Fev':1,'Mar':2,'Abr':3,'Mai':4,'Jun':5,'Jul':6,'Ago':7,'Set':8,'Out':9,'Nov':10,'Dez':11};
@@ -209,17 +240,14 @@ const App: React.FC = () => {
             const currentAvgPrice = quantity > 0 ? totalCost / quantity : 0;
             const qtySold = Math.min(quantity, t.quantity);
             quantity -= qtySold;
-            // Reduz custo proporcionalmente
             totalCost -= (qtySold * currentAvgPrice);
         }
     }
 
     const existingAsset = currentAssets.find(a => a.ticker === ticker);
-    // Se vendeu tudo, remove
     if (quantity <= 0.0001) return currentAssets.filter(a => a.ticker !== ticker);
     
     const avgPrice = quantity > 0 ? totalCost / quantity : 0;
-    // Usa preço atual se existir, senão usa o da última transação como placeholder
     const currentPrice = existingAsset ? existingAsset.currentPrice : (assetTransactions.length > 0 ? assetTransactions[assetTransactions.length - 1].price : 0);
     
     const updatedAsset: Asset = {
@@ -246,26 +274,20 @@ const App: React.FC = () => {
         return updated;
     });
     setAssets(prev => recalculateAssetFromHistory(newTransaction.ticker, updated, prev));
-    // Força atualização de preços após salvar
     setTimeout(() => refreshMarketData(true), 1000);
   }, [refreshMarketData]);
 
   const handleDeleteTransaction = useCallback((id: string) => {
     const t = transactions.find(x => x.id === id);
     if (!t) return;
-    
-    // Precisamos filtrar primeiro para recalcular corretamente
     const remainingTransactions = transactions.filter(x => x.id !== id);
     setTransactions(remainingTransactions);
-    
     setAssets(prev => recalculateAssetFromHistory(t.ticker, remainingTransactions, prev));
   }, [transactions]);
 
-  // Efeito inicial para carregar dados assim que o app não estiver mais carregando (Splash)
   useEffect(() => {
     if (!isAppLoading) { 
-        // Pequeno delay para garantir que a UI renderizou antes do fetch pesado
-        setTimeout(() => refreshMarketData(true), 500); 
+        setTimeout(() => refreshMarketData(true), 1000); // Atraso leve na inicialização para smooth entry
     }
   }, [isAppLoading, refreshMarketData]);
 
@@ -293,15 +315,16 @@ const App: React.FC = () => {
     return {
       totalBalance: balance, totalInvested: cost, yieldOnCost: cost > 0 ? (projected / cost) * 100 : 0,
       projectedAnnualIncome: projected, capitalGain: balance - cost, dailyChange: weightedAvgChange,
-      dailyChangeValue: balance * (weightedAvgChange / 100)
+      dailyChangeValue: balance * (weightedAvgChange / 100),
+      // Flag extra para passar ao Card
+      isSyncing: !!refreshStatus && refreshStatus !== 'Tudo Atualizado!'
     };
-  }, [assets]);
+  }, [assets, refreshStatus]);
 
   const portfolioData = useMemo(() => {
     const total = summaryData.totalBalance;
     if (total === 0) return [];
     
-    // Agrupa por Tipo de Ativo
     const groups: Record<string, number> = {};
     assets.forEach(a => { 
         const type = a.assetType || 'Outros';
@@ -312,9 +335,8 @@ const App: React.FC = () => {
         id: name, 
         name, 
         percentage: parseFloat(((value / total) * 100).toFixed(1)),
-        // Usa a paleta de cores global rotativa
         color: CHART_COLORS[index % CHART_COLORS.length]
-    })).sort((a, b) => b.percentage - a.percentage); // Ordena do maior para o menor
+    })).sort((a, b) => b.percentage - a.percentage);
   }, [assets, summaryData.totalBalance]);
 
   if (isAppLoading) return <SplashScreen onComplete={handleSplashComplete} />;
@@ -324,12 +346,23 @@ const App: React.FC = () => {
         className="min-h-screen flex text-gray-900 dark:text-white font-sans overflow-hidden relative transition-colors duration-700 bg-brand-muted"
         style={{ background: `radial-gradient(circle at 50% -20%, var(--brand-highlight), var(--brand-muted) ${currentTheme.type === 'dark' ? '60%' : '80%'})` }}
     >
+      <SystemUpdateOverlay updateAvailable={updateAvailable} onInstall={handleInstallUpdate} />
+      
       <div className="bg-noise opacity-[0.02] absolute inset-0 pointer-events-none"></div>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} currentTheme={currentTheme} />
       <div className="flex-1 flex flex-col h-screen relative z-10 w-full overflow-hidden">
+        
+        {/* Barra de Progresso Global no Topo da Área de Conteúdo */}
+        {refreshStatus && (
+            <div className="absolute top-0 left-0 w-full h-1 z-50 overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-transparent via-brand-500 to-transparent w-[50%] animate-[shimmer_1.5s_infinite_linear]"></div>
+            </div>
+        )}
+
         <Header 
           title={showNotifications ? "Notificações" : activeTab === 'dashboard' ? "Invest" : activeTab === 'wallet' ? "Carteira" : activeTab === 'transactions' ? "Extrato" : "Ajustes"} 
-          subtitle={isRefreshing ? "Atualizando..." : (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
+          // O subtítulo agora exibe o status dinâmico ou o padrão
+          subtitle={refreshStatus || (activeTab === 'dashboard' ? "Visão Geral" : "Detalhes")}
           showBackButton={(['settings'].includes(activeTab) || showNotifications) && window.innerWidth < 768} 
           showAddButton={!showNotifications && ['dashboard', 'wallet', 'transactions'].includes(activeTab)}
           hasUnreadNotifications={notifications.some(n => !n.read)}

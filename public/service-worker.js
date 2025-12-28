@@ -1,5 +1,5 @@
 
-const CACHE_VERSION = 'v2.6'; // Incrementado
+const CACHE_VERSION = 'v3.0.0-system-update'; // Incrementado
 const STATIC_CACHE = `invest-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `invest-runtime-${CACHE_VERSION}`;
 
@@ -16,14 +16,12 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE)
       .then((cache) => {
         console.log('[SW] Pre-caching static assets');
-        // Adicionado catch para garantir que a instalação não falhe se um ativo externo falhar
         return cache.addAll(PRECACHE_ASSETS).catch(err => {
             console.warn('[SW] Aviso: Falha ao pré-carregar alguns ativos estáticos.', err);
         });
       })
   );
-  // Permite que o novo SW assuma o controle imediatamente após ativação em alguns casos, 
-  // mas mantemos o skipWaiting manual para controle do usuário.
+  // Mantém o SW em estado 'waiting' até o usuário confirmar a atualização na UI
 });
 
 // Listener para receber o comando da UI
@@ -47,12 +45,10 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Verificação de segurança para evitar erros com extensões do Chrome (chrome-extension://)
   if (!event.request.url.startsWith('http')) return;
 
   const url = new URL(event.request.url);
 
-  // Network First para navegação (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
@@ -62,12 +58,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache First para libs externas e ícones conhecidos
   if (url.hostname.includes('esm.sh') || url.hostname.includes('flaticon.com')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         return cached || fetch(event.request).then(res => {
-          // Apenas cacheia respostas válidas
           if (res && res.status === 200) {
               const copy = res.clone();
               caches.open(RUNTIME_CACHE).then(c => c.put(event.request, copy));
@@ -79,7 +73,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate para o restante
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request).then((networkRes) => {
@@ -88,9 +81,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(RUNTIME_CACHE).then((cache) => cache.put(event.request, copy));
         }
         return networkRes;
-      }).catch(() => {
-         // Falha silenciosa no fetch background
-      });
+      }).catch(() => {});
 
       return cached || fetchPromise;
     })

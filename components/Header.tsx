@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   
   // Helper for the pulsing dot - shows for main sections
   const showDot = typeof title === 'string' && ['Invest', 'Carteira', 'Extrato'].includes(title);
+  const isRefreshing = subtitle && subtitle !== 'Visão Geral' && subtitle !== 'Detalhes' && !subtitle.startsWith('Atualizado');
 
   return (
     <header className="flex justify-between items-center px-6 py-4 sticky top-0 z-30 bg-white/80 dark:bg-[#050505]/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-white/5 transition-all duration-300 min-h-[80px]">
@@ -64,11 +65,13 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
             </div>
             
-            {subtitle && (
-                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 tracking-widest uppercase block leading-none animate-fade-in opacity-80">
+            {/* Animação suave para troca de texto (key para forçar re-render da animação) */}
+            <span 
+                key={subtitle} 
+                className={`text-[10px] font-bold tracking-widest uppercase block leading-none transition-colors duration-300 animate-fade-in ${isRefreshing ? 'text-brand-500' : 'text-gray-500 dark:text-gray-400 opacity-80'}`}
+            >
                 {subtitle}
-                </span>
-            )}
+            </span>
         </div>
       </div>
       
@@ -76,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-2">
         <button 
           onClick={onRefreshClick}
-          className={`w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all active:scale-90 active:rotate-180 duration-500 ${subtitle?.includes('Atualizando') ? 'animate-spin opacity-50' : ''}`}
+          className={`w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 transition-all active:scale-90 duration-500 ${isRefreshing ? 'animate-spin text-brand-500 bg-brand-500/10' : ''}`}
         >
           <RefreshCcw size={18} strokeWidth={2} />
         </button>
