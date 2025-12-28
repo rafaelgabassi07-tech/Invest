@@ -9,6 +9,27 @@ const getApiKey = () => {
   return key;
 };
 
+// Helper para formatar fontes do Grounding (Google Search)
+const appendGroundingSources = (text: string, response: any): string => {
+    const candidate = response.candidates?.[0];
+    const chunks = candidate?.groundingMetadata?.groundingChunks;
+
+    if (!chunks || chunks.length === 0) return text;
+
+    const sources = chunks
+        .map((c: any, index: number) => {
+            if (c.web?.uri && c.web?.title) {
+                return `- [${c.web.title}](${c.web.uri})`;
+            }
+            return null;
+        })
+        .filter(Boolean);
+
+    if (sources.length === 0) return text;
+
+    return `${text}\n\n**Fontes Consultadas:**\n${sources.join('\n')}`;
+};
+
 export const getFinancialAdvice = async (
   query: string, 
   summary: FinancialSummary, 
@@ -24,6 +45,7 @@ export const getFinancialAdvice = async (
     logApiRequest('gemini');
     const ai = new GoogleGenAI({ apiKey: apiKey });
     
+    // Constrói contexto rico para enviar em UMA única requisição
     const assetsContext = assets.map(a => {
       const profit = a.totalValue - a.totalCost;
       const profitPerc = a.totalCost > 0 ? (profit / a.totalCost) * 100 : 0;
@@ -50,8 +72,9 @@ export const getFinancialAdvice = async (
       3. Se a pergunta for sobre um fato relevante ou notícia recente que não está nos dados acima, USE A BUSCA DO GOOGLE (ferramenta ativa) para responder.
     `;
 
+    // Uso explícito do Gemini 2.5 Flash Preview
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash-preview',
       contents: query,
       config: {
         systemInstruction,
@@ -60,10 +83,12 @@ export const getFinancialAdvice = async (
       }
     });
 
-    return response.text || "Não consegui gerar uma resposta.";
+    const text = response.text || "Não consegui gerar uma resposta.";
+    return appendGroundingSources(text, response);
+
   } catch (error) {
     console.error("[Gemini Advisor] Erro:", error);
-    return "Ocorreu um erro ao conectar com a Inteligência Artificial.";
+    return "Ocorreu um erro ao conectar com a Inteligência Artificial (Gemini 2.5).";
   }
 };
 
@@ -89,15 +114,18 @@ export const analyzeAsset = async (asset: Asset): Promise<string> => {
         3. Uma breve opinião sobre o setor (${asset.segment}) e notícias recentes.
         Seja sucinto (max 100 palavras).`;
 
+        // Uso explícito do Gemini 2.5 Flash Preview
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-2.5-flash-preview',
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }] // Ativa Grounding
             }
         });
 
-        return response.text || "Sem análise disponível.";
+        const text = response.text || "Sem análise disponível.";
+        return appendGroundingSources(text, response);
+
     } catch (error) {
         return "Erro ao analisar ativo via Gemini.";
     }
@@ -120,15 +148,18 @@ export const analyzePortfolioStruct = async (portfolio: PortfolioItem[], totalVa
         2. Sugestão de rebalanceamento rápido considerando o cenário macroeconômico atual (faça uma busca breve se necessário).
         Seja direto.`;
 
+        // Uso explícito do Gemini 2.5 Flash Preview
         const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
+            model: 'gemini-2.5-flash-preview',
             contents: prompt,
             config: {
                 tools: [{ googleSearch: {} }] // Ativa Grounding
             }
         });
 
-        return response.text || "Sem análise disponível.";
+        const text = response.text || "Sem análise disponível.";
+        return appendGroundingSources(text, response);
+
     } catch (error) {
         return "Erro ao analisar carteira.";
     }
